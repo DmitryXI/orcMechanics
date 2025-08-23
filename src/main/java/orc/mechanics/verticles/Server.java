@@ -30,6 +30,7 @@ public class Server extends AbstractVerticle {
     private Integer                 ServerHttpPort          = 80;                                       // Номер порта, на котром веб-сервер будет слушать HTTP
     private String                  localAddress            = "server";                                 // Локальный адрес вертикла
     private LocalMap<String, String> verticlesAddresses     = null;                                     // Массив персональных адресов вертиклов на шине данных
+    private EventBus                eb                      = null;                                     // Шина данных для обмена сообщениями вертиклами между собой и вертиклов с веб-клиентами
     private SockJSHandler           wsHandler               = null;                                     // Обработчик для вебсокета
     private SockJSBridgeOptions     wsHandlerBridgeOptions  = null;                                     // Опции обработчика для вебсокета
     private Router                  router                  = null;                                     // Основной маршрутизатор (для вебсервера)
@@ -43,7 +44,7 @@ public class Server extends AbstractVerticle {
     public void start(Promise<Void> startPromise) throws Exception {
         log.info("Server verticle started");
 
-        EventBus eb             = vertx.eventBus();                                                                 // Шина данных для обмена сообщениями вертиклами между собой и вертиклов с веб-клиентами
+        eb                      = vertx.eventBus();                                                     // Шина данных для обмена сообщениями вертиклами между собой и вертиклов с веб-клиентами
         verticlesAddresses      = vertx.sharedData().getLocalMap("verticlesAddresses");              // Подключаем общий массив адресов вертиклов
         verticlesAddresses.put(localAddress, "server");                                              // Регистрируем адрес в общем списке
         eb.localConsumer(localAddress, this::onLocalMessage);                                           // Подписываемся на сообщения для сервера
@@ -100,7 +101,39 @@ public class Server extends AbstractVerticle {
 
     // Обработка клиентских сообщений
     public void onClientMessage(BridgeEvent event){
-        //
+
+        switch (event.type()){
+            case SOCKET_CREATED:
+                System.out.println("Received SOCKET_CREATED from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
+                break;
+            case SOCKET_CLOSED:
+                System.out.println("Received SOCKET_CLOSED from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
+                break;
+            case SOCKET_PING:
+                System.out.println("Received PING from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
+                break;
+            case REGISTER:
+                System.out.println("Received REGISTER from address "+event.getRawMessage().getString("address"));
+                break;
+            case REGISTERED:
+                System.out.println("Received REGISTERED from address "+event.getRawMessage().getString("address"));
+                eb.send("core", new JSONObject().put("from", localAddress).put("action", "clientAnyMessage").toString());
+                break;
+            case UNREGISTER:
+                System.out.println("Received UNREGISTER from address "+event.getRawMessage().getString("address")+" and "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
+                break;
+            case SEND:
+                System.out.println("Received SEND for address "+event.getRawMessage().getString("address"));
+                break;
+            case RECEIVE:
+                System.out.println("Received RECEIVE from address "+event.getRawMessage().getString("address"));
+                System.out.println(event.getRawMessage().toString());
+                break;
+            default:
+                System.out.println("Received unexpected "+event.type()+" from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
+        }
+
+        event.complete(true);
     }
 
     // Обработка запросов контента GET/POST запросами
