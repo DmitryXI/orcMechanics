@@ -30,7 +30,7 @@ function Logger() {
     this.log = function (message, importance){
         importance = Number(importance)
 
-        if((importance > 0) && (importance <= w().logLevel)){
+        if(((w().logList.length == 0) && (importance > 0) && (importance <= w().logLevel)) || (w().logList.includes(importance))){
             let importanceText;
 
             switch(importance) {
@@ -85,6 +85,42 @@ function refreshForms(){
 
 }
 
+// Запись значения в cookie
+function setCookie(name,value,days) {
+    var expires = "";
+    if (days) {
+        var date = new Date();
+        date.setTime(date.getTime() + (days*24*60*60*1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+}
+
+// Чтение значения из cookie
+function getCookie(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0;i < ca.length;i++) {
+        var c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
+}
+
+// Очистка cookie
+function eraseCookie(name) {
+    document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+}
+
+
+
+
+
+
+
+
+
 // Обработка входящих сообщений
 function onMessge(err, msg){
 
@@ -105,7 +141,30 @@ function onMessge(err, msg){
             body = JSON.parse(msg.body);
         }catch{
             log.error("Error parsing body JSON");
+            return;
         }
+    }else{return;}
+
+    // Обрабатываем сообщение, только если есть body
+
+    if(msg.address === "general"){
+        if((w().user.status === "registration") && (body.action === "newClientSession")){
+            w().user.usid = body.usid;
+            w().user.clientAddress = body.address;
+            w().user.status = "confirming";
+            setCookie("user.usid", w().user.usid, 1);                             // Сохраняем в куках идентификатор сессии и её адрес
+            setCookie("user.clientAddress", w().user.clientAddress, 1);
+            log.debug("Registered on server success");
+            w().ueb.unregisterHandler("general", onMessge);                       // Снимаем регистрацию для публичного адреса
+            w().ueb.registerHandler(w().user.clientAddress, onMessge);            // И регистрируемся по адресу клиентской сессии
+        }else{
+            log.error("Unexpected message in channel general");
+            log.error(msg);
+            return;
+        }
+    }else if(msg.address === w().user.clientAddress){
+        log.debug("Message in client channel");
+        w().ueb.send(w().user.clientAddress, JSON.stringify({"test":"message"}));
     }
 }
 

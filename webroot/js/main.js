@@ -2,7 +2,7 @@
 
 // Глобальное хранилище переменных на уровне окна/вкладки
 window.vars = {
-    "logLevel" : 7,              // Уровень журналирования в консоль
+    "logLevel" : 8,              // Уровень журналирования в консоль
     "logList"  : [],             // Список номеров важности сообщений для вывода в консоль (альтернатива уровню (logLevel))
     "logger"   : new Logger(),   // Глобальный логер
     "user"     : null,           // Информация о текущем пользователе
@@ -62,15 +62,16 @@ function docReady(){
     w().ueb.onopen = function() {
         log.info("Connected to server");
         w().ueb.send = function(address, message, headers, callback) {
-            log.debug8("Send to "+address+": "+message);
+//            log.debug8("Send to "+address+": "+message);
+            log.debug8("Send to "+address+":");
             log.debug8(JSON.parse(message));
             return EventBus.prototype.send.call(this, address, message, headers, callback);
         }
         w().user.connected = true;                  // Обновляем статус подключения
         if(w().user.usid === null){
             log.info("Request registration");
-            w().status = "registration";
-            w().ueb.registerHandler("general", onMessge);
+            w().user.status = "registration";
+            w().ueb.registerHandler("general", onMessge);   // Отправляем запрос на регистрацию на публичный адрес (для получения персонального адреса)
         }
     };
 
