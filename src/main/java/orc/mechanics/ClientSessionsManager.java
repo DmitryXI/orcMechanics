@@ -9,7 +9,7 @@ public class ClientSessionsManager extends SessionsManager {
 
 
     public ClientSessionsManager() {
-        super();
+        super("cl");
         hostPorts           = new HashMap<>();
     }
 
@@ -95,6 +95,40 @@ public class ClientSessionsManager extends SessionsManager {
             return true;
         }else {
             log.error("setHostPort: can't set host:port "+host+":"+port+" to session "+uid);
+        }
+
+        return false;
+    }
+
+    // Получить идентификатор клиента по UID сессии
+    public String getClientId(String uid){
+
+        HashMap<String, Object> ses = getSession(uid);
+
+        if (ses != null) {
+            Object clientId = ses.get("clid");
+
+            if (clientId != null) {
+                return (String) clientId;
+            }
+            return "";
+        }else {
+            log.error("getClientId: can't get client id for session "+uid);
+        }
+
+        return null;
+    }
+
+    // Задать идентификатор клиента сессии
+    public boolean setClientId(String clientId, String uid){
+
+        HashMap<String, Object> ses = getSession(uid);
+
+        if (ses != null) {
+            ses.put("clientId", clientId);
+            return true;
+        }else {
+            log.error("setClientId: can't set client id "+clientId+" to session "+uid);
         }
 
         return false;

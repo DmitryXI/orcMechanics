@@ -40,7 +40,7 @@ public class Server extends AbstractVerticle {
     private Router                  wsRouter                = null;                                     // Дополнительный маршрутизатор (для вебсокета)
     private String                  contentFilesPath        = null;                                     // Путь к корню директории с контентом
     private HashMap<String, PermittedOptions> permittedAddresses = null;                                // Список разрешённых адресов (имён каналов)
-    private TreeMap<String, Long>   clientsAdresses         = null;                                     // Список адресов клиентов для определения типа сессии по адресу
+//    private TreeMap<String, Long>   clientsAdresses         = null;                                     // Список адресов клиентов для определения типа сессии по адресу
 
 
     @Override
@@ -54,7 +54,7 @@ public class Server extends AbstractVerticle {
 
         contentFilesPath        = "./content/";                                                         // Путь к папке с закрытым веб-контентом
         permittedAddresses      = new HashMap<>();                                                      // Создаём пустое хранилище опций с разрешениями адресов
-        clientsAdresses         = new TreeMap<>();                                                      // Создаём пустое хранилище адресов клиентов
+//        clientsAdresses         = new TreeMap<>();                                                      // Создаём пустое хранилище адресов клиентов
         router                  = Router.router(vertx);                                                 // Создаём основной роутер веб-сервера
         contentRouter           = Router.router(vertx);                                                 // Создаём подроутер для закрытого контента
         wsHandler               = SockJSHandler.create(vertx);                                          // Создаём хэндлер для веб-сокета
@@ -116,7 +116,7 @@ public class Server extends AbstractVerticle {
             case "newClientSession":
                 log.debug("Adding empty session");
                 addEbPermit((String) msg.get("address"));                                                   // Добавляем разрешение для адреса новой сессии
-                clientsAdresses.put((String) msg.get("address"), System.currentTimeMillis() / 1000);        // Добавляем таймштамп последней активности
+//                clientsAdresses.put((String) msg.get("address"), System.currentTimeMillis() / 1000);        // Добавляем таймштамп последней активности
                 msg.put("from", "server");
                 eb.send("general", (new JSONObject(msg)).toString());
                 break;
@@ -169,7 +169,7 @@ public class Server extends AbstractVerticle {
 
         if (address.equals("general")) {
             eb.send("core", new JSONObject().put("from", localAddress).put("action", "clientSessionRequest").toString());
-        } else if (clientsAdresses.containsKey(address)) {
+        } else if (address.substring(0,2).equals("cl")) {
             eb.send("core", new JSONObject()
                     .put("from", localAddress)
                     .put("action", "clientSessionConfirm")

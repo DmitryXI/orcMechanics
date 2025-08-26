@@ -10,16 +10,20 @@ public class SessionsManager {
     protected Logger                  log             = null;                       // Логер
     protected Integer                 uidLen          = null;                       // Длина идентификатора сессии в символах
     protected String                  uidChars        = null;                       // Набор символов для генерации UID'ов
+    protected String                  addressPrefix   = null;                       // Префикс для UID'ов сессий
     protected Random                  rnd             = null;                       // Рандомайзер
     private HashMap<String, Object> sessions          = null;                        // Карта объектов с полными данными сессий
     private HashMap<String, Long>   lastActivity      = null;                        // Карта UID сессий с временем последней активности
     private HashMap<String, Object> addresses         = null;                        // Индекс по адресу
 
-    public SessionsManager() {
+
+
+    public SessionsManager(String addressPrefix) {
 
         log                 = LoggerFactory.getLogger(SessionsManager.class);
         uidLen              = 12;
         uidChars            = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        this.addressPrefix  = addressPrefix;
         rnd                 = new Random();
         sessions = new HashMap<>();
         lastActivity        = new HashMap<>();
@@ -38,7 +42,7 @@ public class SessionsManager {
             if (genCount > 10){ return null; }
         }
 
-        String  address = "ws"+uid;
+        String  address = addressPrefix+uid;
         Long    ts = getCurrentTimeStamp();
 
         HashMap<String, Object> session = new HashMap<>();

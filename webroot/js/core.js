@@ -85,6 +85,18 @@ function refreshForms(){
 
 }
 
+// Генерация случайной строки
+function getRandomString(len) {
+    let result = '';
+    let characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+-*';
+    let charactersLength = characters.length;
+    for (let i = 0; i < len; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+
+    return result;
+}
+
 // Запись значения в cookie
 function setCookie(name,value,days) {
     var expires = "";
@@ -105,6 +117,7 @@ function getCookie(name) {
         while (c.charAt(0)==' ') c = c.substring(1,c.length);
         if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
     }
+
     return null;
 }
 
@@ -148,12 +161,10 @@ function onMessge(err, msg){
     // Обрабатываем сообщение, только если есть body
 
     if(msg.address === "general"){
-        if((w().user.status === "registration") && (body.action === "newClientSession")){
+        if((w().user.status === "registration") && (body.action === "newClientSession")){       // Если это подтверждение регистрации и выдача сессии
             w().user.usid = body.usid;
             w().user.clientAddress = body.address;
-            w().user.status = "confirming";
-            setCookie("user.usid", w().user.usid, 1);                             // Сохраняем в куках идентификатор сессии и её адрес
-            setCookie("user.clientAddress", w().user.clientAddress, 1);
+            w().user.status = "handshake";
             log.debug("Registered on server success");
             w().ueb.unregisterHandler("general", onMessge);                       // Снимаем регистрацию для публичного адреса
             w().ueb.registerHandler(w().user.clientAddress, onMessge);            // И регистрируемся по адресу клиентской сессии
@@ -163,8 +174,32 @@ function onMessge(err, msg){
             return;
         }
     }else if(msg.address === w().user.clientAddress){
-        log.debug("Message in client channel");
-        w().ueb.send(w().user.clientAddress, JSON.stringify({"test":"message"}));
+        if((w().user.status === "handshake") && (body.action === "confirmingClientSession")){       // Если это подтверждение регистрации по клиентскому адресу
+            let usid = getCookie("user.usid");
+            let clid = getCookie("user.clid");
+
+            if(clid === null){ w().user.clid = getRandomString(16); }
+            else{ w().user.clid = clid; }
+
+            w().user.status = "confirm";
+
+            if(usid !== null){                                                                  // Запрос восстановления старой сессии, если есть в куках
+                log.debug("Trying restoring old session: usid="+usid+", clid="+clid);
+                w().ueb.send(w().user.clientAddress, JSON.stringify({"usid":w().user.usid,"clid":w().user.clid,"action":"restoreClientSession","rusid":usid}));
+            }else{                                                                              // Запрос на подтверждение принятия новой сессии
+                log.debug("Confirm new session");
+                w().ueb.send(w().user.clientAddress, JSON.stringify({"usid":w().user.usid,"clid":w().user.clid,"action":"confirmClientSession"}));
+            }
+
+            setCookie("user.usid", w().user.usid, 1);                             // Сохраняем в куках идентификатор сессии и её адрес
+            setCookie("user.clid", w().user.clid, 1);                             // Сохраняем в куках идентификатор клиента
+        }else if((w().user.status === "confirm") && (body.action === "confirmClientSession")){       // Если это подтверждение сессии клиента
+            log.debug("Принято подтверждение сессии");
+        }
+    }else{
+        log.error("Unexpected message in channel "+msg.address);
+        log.error(msg);
+        return;
     }
 }
 

@@ -32,13 +32,13 @@ public class Core extends AbstractVerticle {
         log.info("Core verticle started");
 
         clientSessions      = new ClientSessionsManager();                                              // Менеджер сессий клиентов
-        gameSessions        = new SessionsManager();                                                    // Менеджер сессий игр
+        gameSessions        = new SessionsManager(null);                                        // Менеджер сессий игр
 
         eb                  = vertx.eventBus();                                                         // Шина данных для обмена сообщениями вертиклами между собой и вертиклов с веб-клиентами
         verticlesAddresses  = vertx.sharedData().getLocalMap("verticlesAddresses");                  // Подключаем общий массив адресов вертиклов
 
         verticlesAddresses.put(localAddress, "core");                                                // Регистрируем адрес в общем списке
-        eb.localConsumer(localAddress, this::onLocalMessage);                                           // Подписываемся на сообщения для сервера
+        eb.localConsumer(localAddress, this::onLocalMessage);                                           // Подписываемся на сообщения от Server
 
         startPromise.complete();
     }
@@ -74,10 +74,16 @@ public class Core extends AbstractVerticle {
         System.out.println("Core received local message: "+ebMsg.body());
     }
 
+    // Обработка внутренних сообщений от Server
     public void onServerMessage(HashMap<String, Object> msg){
 
         String uid;
         HashMap<String, Object> ses;
+
+        if (msg.get("action") == null){
+            log.error("Core::onServerMessage: no action field in body ("+msg.toString()+")");
+            return;
+        }
 
         switch ((String) msg.get("action")){
             case "clientSessionRequest":
@@ -146,8 +152,63 @@ public class Core extends AbstractVerticle {
             return;
         }
 
-        System.out.println("Core received client message...");
-        System.out.println(msg.toString());
+        System.out.println("Core received client message: "+msg.toString());
+
+        String address = ebMsg.address();
+
+        if (msg.get("action") == null) {
+            log.error("Core::onClientMessage: received wrong body without action: "+msg.toString());
+            eb.send(address, new JSONObject().put("from", localAddress).put("action", "error").put("text", "Received wrong body without action").toString());
+            return;
+        }
+        if (msg.get("usid") == null) {
+            log.error("Core::onClientMessage: received wrong body without usid: "+msg.toString());
+            eb.send(address, new JSONObject().put("from", localAddress).put("action", "error").put("text", "Received wrong body without usid").toString());
+            return;
+        }
+
+        String action = (String) msg.get("action");
+        HashMap<String, Object> ses;
+        String uid;
+
+        switch (action){
+            case "confirmClientSession":
+                ses = clientSessions.getSessionByAddress(address);
+
+                if (ses == null) {
+                    log.error("Core::onClientMessage: no session for address: "+address);
+                    eb.send(address, new JSONObject().put("from", localAddress).put("action", "error").put("text", "No session for address: "+address).toString());
+                    return;
+                }
+                if (msg.get("clid") == null) {
+                    log.error("Core::onClientMessage: received wrong body without clid: "+msg.toString());
+                    eb.send(address, new JSONObject().put("from", localAddress).put("action", "error").put("text", "Received wrong body without clid").toString());
+                    return;
+                }
+                uid = (String) ses.get("uid");
+                if (!uid.equals(msg.get("usid").toString())) {
+                    log.error("Core::onClientMessage: uid in session "+(String) msg.get("uid")+" not equals usid in msg "+(String) msg.get("usid"));
+                    eb.send(address, new JSONObject().put("from", localAddress).put("action", "error").put("text", "usid not equals").toString());
+                    return;
+                }
+
+                clientSessions.setActivity(uid);
+                clientSessions.setClientId(msg.get("clid").toString(), uid);
+                clientSessions.setStatus("ready", uid);
+
+                eb.send(address, new JSONObject()
+                        .put("from", localAddress)
+                        .put("action", "confirmClientSession")
+                        .put("usid", uid)
+                        .put("address", address)
+                        .toString());
+
+                break;
+            case "restoreClientSession":
+                break;
+            default:
+                log.error("Core::onClientMessage: Unexpected action: "+action);
+        }
     }
 }
 
