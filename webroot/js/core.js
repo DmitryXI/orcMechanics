@@ -161,40 +161,54 @@ function onMessge(err, msg){
     // Обрабатываем сообщение, только если есть body
 
     if(msg.address === "general"){
-        if((w().user.status === "registration") && (body.action === "newClientSession")){       // Если это подтверждение регистрации и выдача сессии
+        if((w().user.status === "preRegistration") && (body.action === "newClientSession")){       // Если это подтверждение регистрации на сервере
+            log.debug("Successfully registered on general channel");
+
             w().user.usid = body.usid;
             w().user.clientAddress = body.address;
-            w().user.status = "handshake";
-            log.debug("Registered on server success");
-            w().ueb.unregisterHandler("general", onMessge);                       // Снимаем регистрацию для публичного адреса
-            w().ueb.registerHandler(w().user.clientAddress, onMessge);            // И регистрируемся по адресу клиентской сессии
+            w().user.status = "registration";
+
+            setCookie("user.usid", w().user.usid, 1);                                               // Сохраняем в куках идентификатор сессии
+            setCookie("user.clientAddress", w().user.clientAddress, 1);                             // Сохраняем в куках адрес сессии
+            setCookie("user.clid", w().user.clid, 1);                                               // Сохраняем в куках идентификатор клиента
+
+            w().ueb.unregisterHandler("general", onMessge);                                         // Снимаем регистрацию для публичного адреса
+                                                                                                    // И регистрируемся по адресу клиентской сессии
+            w().ueb.registerHandler(w().user.clientAddress, {"side":"client","action":"registration","usid":w().user.usid,"clid":w().user.clid,"address":w().user.clientAddress}, onMessge);
         }else{
             log.error("Unexpected message in channel general");
             log.error(msg);
             return;
         }
     }else if(msg.address === w().user.clientAddress){
-        if((w().user.status === "handshake") && (body.action === "confirmingClientSession")){       // Если это подтверждение регистрации по клиентскому адресу
-            let usid = getCookie("user.usid");
-            let clid = getCookie("user.clid");
+        if((w().user.status === "registration") && (body.action === "serverConfirm")){              // Если это подтверждение регистрации по клиентскому адресу
+            log.debug("Session confirmed from server");
 
-            if(clid === null){ w().user.clid = getRandomString(16); }
-            else{ w().user.clid = clid; }
+            w().ueb.send("core", JSON.stringify({"usid":w().user.usid,"address":w().user.clientAddress,"action":"testAction","description":"Не забыть, что регистрируемся на адрес клиентской сессии, а отправляем сообщения на кор"}));
 
-            w().user.status = "confirm";
-
-            if(usid !== null){                                                                  // Запрос восстановления старой сессии, если есть в куках
-                log.debug("Trying restoring old session: usid="+usid+", clid="+clid);
-                w().ueb.send(w().user.clientAddress, JSON.stringify({"usid":w().user.usid,"clid":w().user.clid,"action":"restoreClientSession","rusid":usid}));
-            }else{                                                                              // Запрос на подтверждение принятия новой сессии
-                log.debug("Confirm new session");
-                w().ueb.send(w().user.clientAddress, JSON.stringify({"usid":w().user.usid,"clid":w().user.clid,"action":"confirmClientSession"}));
-            }
-
-            setCookie("user.usid", w().user.usid, 1);                             // Сохраняем в куках идентификатор сессии и её адрес
-            setCookie("user.clid", w().user.clid, 1);                             // Сохраняем в куках идентификатор клиента
-        }else if((w().user.status === "confirm") && (body.action === "confirmClientSession")){       // Если это подтверждение сессии клиента
-            log.debug("Принято подтверждение сессии");
+//            let usid = getCookie("user.usid");
+//            let clid = getCookie("user.clid");
+//            if(clid === null){ w().user.clid = getRandomString(16); }
+//            else{ w().user.clid = clid; }
+//            w().user.status = "confirm";
+//            if(usid !== null){                                                                  // Запрос восстановления старой сессии, если есть в куках
+//                log.debug("Trying restoring old session: usid="+usid+", clid="+clid);
+//                w().ueb.send(w().user.clientAddress, JSON.stringify({"usid":w().user.usid,"clid":w().user.clid,"action":"restoreClientSession","rusid":usid}));
+//            }else{                                                                              // Запрос на подтверждение принятия новой сессии
+//                log.debug("Confirm new session");
+//                w().ueb.send(w().user.clientAddress, JSON.stringify({"usid":w().user.usid,"clid":w().user.clid,"action":"confirmClientSession"}));
+//            }
+//
+//            log.debug("Confirm session from client");
+//            w().user.status = "confirm";
+//            w().ueb.send(w().user.clientAddress, JSON.stringify({"usid":w().user.usid,"clid":w().user.clid,"action":"confirmClientSession"}));
+//
+//            setCookie("user.usid", w().user.usid, 1);                             // Сохраняем в куках идентификатор сессии
+//            setCookie("user.clientAddress", w().user.clientAddress, 1);           // Сохраняем в куках адрес сессии
+//            setCookie("user.clid", w().user.clid, 1);                             // Сохраняем в куках идентификатор клиента
+//        }else if((w().user.status === "confirm") && (body.action === "confirmClientSession")){       // Если это подтверждение готовности сессии
+//            log.debug("Session ready");
+//            w().user.status = "ready";
         }
     }else{
         log.error("Unexpected message in channel "+msg.address);

@@ -59,26 +59,39 @@ function docReady(){
     // Шина данных клиентской сессии
     w().ueb = new EventBus("/eventbus/");
 
+eraseCookie("user.usid");
+eraseCookie("user.clid");
+eraseCookie("user.clientAddress");
+
+    // Проверяем куки на предмет сохранённого идентификатора клиента, сессии и её адреса
+    w().user.usid = getCookie("user.usid");
+    w().user.clid = getCookie("user.clid");
+    w().user.clientAddress = getCookie("user.clientAddress");
+    if(w().user.clid === null){
+        w().user.clid = getRandomString(16);
+        w().user.usid = null;
+        w().user.clientAddress = null;
+    }
+
     // Событие подключения шины данных к серверу через вебсокет
     w().ueb.onopen = function() {
         log.info("Connected to server");
         w().ueb.send = function(address, message, headers, callback) {
-//            log.debug8("Send to "+address+": "+message);
             log.debug8("Send to "+address+":");
             log.debug8(JSON.parse(message));
             return EventBus.prototype.send.call(this, address, message, headers, callback);
         }
-        w().user.connected = true;                  // Обновляем статус подключения
+        w().user.connected = true;                          // Обновляем статус подключения
         if(w().user.usid === null){
-            log.info("Request registration");
-            w().user.status = "registration";
-            w().ueb.registerHandler("general", onMessge);   // Отправляем запрос на регистрацию на публичный адрес (для получения персонального адреса)
+            log.info("Request general registration");
+            w().user.status = "preRegistration";
+            w().ueb.registerHandler("general", {"side":"client","action":"registration","usid":w().user.usid,"clid":w().user.clid}, onMessge);   // Отправляем запрос на регистрацию на общий адрес (для получения персонального адреса)
         }
     };
 
     // Событие отключения шины данных
     w().ueb.onclose = function() {
         log.info("Connect to server closed");
-        w().user.connected = false;                  // Обновляем статус подключения
+        w().user.connected = false;                         // Обновляем статус подключения
     }
 }

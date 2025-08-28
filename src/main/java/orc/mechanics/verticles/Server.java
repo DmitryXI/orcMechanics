@@ -16,12 +16,10 @@ import io.vertx.ext.web.handler.sockjs.BridgeEvent;
 import io.vertx.ext.web.handler.sockjs.SockJSBridgeOptions;
 import io.vertx.ext.web.handler.sockjs.SockJSHandler;
 import io.vertx.rxjava.core.http.HttpHeaders;
-import orc.mechanics.SessionsManager;
 import org.json.JSONObject;
 
 import java.io.File;
 import java.util.HashMap;
-import java.util.TreeMap;
 
 
 // Главный вертикл: держатель веб-сервера
@@ -40,7 +38,6 @@ public class Server extends AbstractVerticle {
     private Router                  wsRouter                = null;                                     // Дополнительный маршрутизатор (для вебсокета)
     private String                  contentFilesPath        = null;                                     // Путь к корню директории с контентом
     private HashMap<String, PermittedOptions> permittedAddresses = null;                                // Список разрешённых адресов (имён каналов)
-//    private TreeMap<String, Long>   clientsAdresses         = null;                                     // Список адресов клиентов для определения типа сессии по адресу
 
 
     @Override
@@ -66,7 +63,8 @@ public class Server extends AbstractVerticle {
         router.route().handler(StaticHandler.create().setCachingEnabled(false).setDefaultContentEncoding("utf-8"));     // Создаём статический обработчик к запросам открытого контента
         contentRouter.post().handler(this::onRequestContent);                                            // Цепляем обработчик к хэндлеру роутера для закрытого контента
 
-        addEbPermit("general");                                                                   // Добавляем разрешение для приёма сообщений через веб-сокет на общий адрес
+        addEbPermit("general");                                                                   // Добавляем разрешение для приёма сообщений через веб-сокет на общий адрес веб-сервера
+        addEbPermit("core");                                                                      // Добавляем разрешение для приёма сообщений через веб-сокет на общий адрес ядра
 
         // Запускаем веб-сервер
         vertx.createHttpServer().requestHandler(router).listen(ServerHttpPort).onComplete(http -> {
@@ -114,9 +112,9 @@ public class Server extends AbstractVerticle {
 
         switch ((String) msg.get("action")){
             case "newClientSession":
-                log.debug("Adding empty session");
+//                log.debug("Sending session, adding address permission");
+                System.out.println("Sending session, adding address permission for "+msg.get("address"));
                 addEbPermit((String) msg.get("address"));                                                   // Добавляем разрешение для адреса новой сессии
-//                clientsAdresses.put((String) msg.get("address"), System.currentTimeMillis() / 1000);        // Добавляем таймштамп последней активности
                 msg.put("from", "server");
                 eb.send("general", (new JSONObject(msg)).toString());
                 break;
@@ -140,10 +138,11 @@ public class Server extends AbstractVerticle {
                 break;
             case REGISTER:
                 System.out.println("Received REGISTER from address "+event.getRawMessage().getString("address"));
+//                System.out.println(event.getRawMessage().toString());
                 break;
             case REGISTERED:
                 System.out.println("Received REGISTERED from address "+event.getRawMessage().getString("address"));
-                clientRegistration(event);
+                onClientRegistered(event);
                 break;
             case UNREGISTER:
                 System.out.println("Received UNREGISTER from address "+event.getRawMessage().getString("address")+" and "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
@@ -163,22 +162,46 @@ public class Server extends AbstractVerticle {
     }
 
     // Обработка запросов клиентов на регистрацию
-    public void clientRegistration(BridgeEvent event){
+    public void onClientRegistered(BridgeEvent event){
 
         String address = event.getRawMessage().getString("address");
+        HashMap<String, Object> msg;
+        try {
+            msg = new Gson().fromJson(event.getRawMessage().getString("headers"), HashMap.class);
+        }catch (Exception e){
+            log.error("Server::onClientRegistered: received wrong JSON-string as headers: "+event.getRawMessage().getString("headers"));
+            return;
+        }
 
+        // Подтверждаем регистрацию клиента на общем канале и отправляем сообщение на Core для поиска/создания клиентской сессии
         if (address.equals("general")) {
-            eb.send("core", new JSONObject().put("from", localAddress).put("action", "clientSessionRequest").toString());
-        } else if (address.substring(0,2).equals("cl")) {
-            eb.send("core", new JSONObject()
-                    .put("from", localAddress)
-                    .put("action", "clientSessionConfirm")
-                    .put("address", address)
-                    .put("host", event.socket().remoteAddress().host())
-                    .put("port", String.valueOf(event.socket().remoteAddress().port()))
-                    .toString());
+            System.out.println("Client general registered with headers: "+event.getRawMessage().getString("headers"));
+
+            if ((msg.get("action") != null) && (msg.get("action").equals("registration"))){
+                msg.put("from", localAddress);
+                msg.put("address", address);
+                msg.put("action", "clientRegistration");
+                msg.put("host", event.socket().remoteAddress().host());
+                msg.put("port", String.valueOf(event.socket().remoteAddress().port()));
+                eb.send("core", new JSONObject(msg).toString());
+            }else {
+                log.error("Server::onClientRegistered: Unexpected action: "+msg.get("action"));
+            }
+        } else if ((address.length() == 14) && (address.substring(0,2).equals("cl"))) {
+            System.out.println("Client personal registered with headers: "+event.getRawMessage().getString("headers"));
+
+            if ((msg.get("action") != null) && (msg.get("action").equals("registration"))){
+                msg.put("from", localAddress);
+                msg.put("address", address);
+                msg.put("action", "clientConfirm");
+                msg.put("host", event.socket().remoteAddress().host());
+                msg.put("port", String.valueOf(event.socket().remoteAddress().port()));
+                eb.send("core", new JSONObject(msg).toString());
+            }else {
+                log.error("Server::onClientRegistered: Unexpected action: "+msg.get("action"));
+            }
         }else {
-            log.error("Server::clientRegistration: received message from unknown address: "+address);
+            log.error("Server::onClientRegistered: received wrong client address: "+address);
         }
     }
 

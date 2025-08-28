@@ -84,7 +84,7 @@ public class ClientSessionsManager extends SessionsManager {
     }
 
     // Сопоставить хост:порт клиента сессии
-    public boolean setHostPort(String host, Integer port, String uid){
+    public boolean setHostPort(String host, String port, String uid){
 
         HashMap<String, Object> ses = getSession(uid);
 
@@ -106,12 +106,7 @@ public class ClientSessionsManager extends SessionsManager {
         HashMap<String, Object> ses = getSession(uid);
 
         if (ses != null) {
-            Object clientId = ses.get("clid");
-
-            if (clientId != null) {
-                return (String) clientId;
-            }
-            return "";
+            return (String) ses.get("clientId");
         }else {
             log.error("getClientId: can't get client id for session "+uid);
         }
