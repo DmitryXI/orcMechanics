@@ -59,9 +59,9 @@ function docReady(){
     // Шина данных клиентской сессии
     w().ueb = new EventBus("/eventbus/");
 
-eraseCookie("user.usid");
-eraseCookie("user.clid");
-eraseCookie("user.clientAddress");
+//eraseCookie("user.usid");
+//eraseCookie("user.clid");
+//eraseCookie("user.clientAddress");
 
     // Проверяем куки на предмет сохранённого идентификатора клиента, сессии и её адреса
     w().user.usid = getCookie("user.usid");
@@ -77,12 +77,18 @@ eraseCookie("user.clientAddress");
     w().ueb.onopen = function() {
         log.info("Connected to server");
         w().ueb.send = function(address, message, headers, callback) {
-            log.debug8("Send to "+address+":");
-            log.debug8(JSON.parse(message));
-            return EventBus.prototype.send.call(this, address, message, headers, callback);
+            if(w().user.connected){
+                log.debug8("Send to "+address+":");
+                log.debug8(JSON.parse(message));
+                return EventBus.prototype.send.call(this, address, message, headers, callback);
+            }else{
+                log.error("No active connection for send message to address "+address);
+                log.error(JSON.parse(message));
+            }
         }
         w().user.connected = true;                          // Обновляем статус подключения
-        if(w().user.usid === null){
+
+        if(w().user.status === "connecting"){
             log.info("Request general registration");
             w().user.status = "preRegistration";
             w().ueb.registerHandler("general", {"side":"client","action":"registration","usid":w().user.usid,"clid":w().user.clid}, onMessge);   // Отправляем запрос на регистрацию на общий адрес (для получения персонального адреса)

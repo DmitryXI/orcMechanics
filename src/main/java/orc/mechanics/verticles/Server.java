@@ -132,6 +132,7 @@ public class Server extends AbstractVerticle {
                 break;
             case SOCKET_CLOSED:
                 System.out.println("Received SOCKET_CLOSED from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
+                onClientSocketClosed(event);
                 break;
             case SOCKET_PING:
 //                System.out.println("Received PING from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
@@ -146,6 +147,7 @@ public class Server extends AbstractVerticle {
                 break;
             case UNREGISTER:
                 System.out.println("Received UNREGISTER from address "+event.getRawMessage().getString("address")+" and "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
+                onClientUnRegister(event);
                 break;
             case SEND:
                 System.out.println("Received SEND for address "+event.getRawMessage().getString("address"));
@@ -170,6 +172,10 @@ public class Server extends AbstractVerticle {
             msg = new Gson().fromJson(event.getRawMessage().getString("headers"), HashMap.class);
         }catch (Exception e){
             log.error("Server::onClientRegistered: received wrong JSON-string as headers: "+event.getRawMessage().getString("headers"));
+            return;
+        }
+        if (msg == null) {
+            log.error("Server::onClientRegistered: received message with empty headers: "+event.getRawMessage().toString());
             return;
         }
 
@@ -203,6 +209,48 @@ public class Server extends AbstractVerticle {
         }else {
             log.error("Server::onClientRegistered: received wrong client address: "+address);
         }
+    }
+
+    // Обработка запросов клиентов на снятие регистрации
+    public void onClientUnRegister(BridgeEvent event) {
+
+        String address = event.getRawMessage().getString("address");
+        HashMap<String, Object> msg;
+        try {
+            msg = new Gson().fromJson(event.getRawMessage().getString("headers"), HashMap.class);
+        } catch (Exception e) {
+            log.error("Server::onClientRegistered: received wrong JSON-string as headers: " + event.getRawMessage().getString("headers"));
+            return;
+        }
+        if (msg == null) {
+            msg = new HashMap<>();
+        }
+
+        // Обработка запросов клиентов на снятие регистрации клиентской сессии
+        if ((address.length() == 14) && (address.substring(0, 2).equals("cl"))) {
+            System.out.println("Server::onClientUnRegistered: Unregister request for client session with address: "+address);
+            delEbPermit(address);
+            msg.put("from", localAddress);
+            msg.put("address", address);
+            msg.put("action", "clientUnregister");
+            msg.put("host", event.socket().remoteAddress().host());
+            msg.put("port", String.valueOf(event.socket().remoteAddress().port()));
+            eb.send("core", new JSONObject(msg).toString());
+        }
+    }
+
+    // Обработка сообщений о закрытии клиентского сокета
+    public void onClientSocketClosed(BridgeEvent event) {
+
+        HashMap<String, Object> msg = new HashMap<>();
+
+        // Обработка сообщений о закрытии клиентского сокета
+        System.out.println("Server::onClientSocketClosed: Closed client socket with host:port: "+event.socket().remoteAddress().host()+":"+String.valueOf(event.socket().remoteAddress().port()));
+        msg.put("from", localAddress);
+        msg.put("action", "clientSocketClosed");
+        msg.put("host", event.socket().remoteAddress().host());
+        msg.put("port", String.valueOf(event.socket().remoteAddress().port()));
+        eb.send("core", new JSONObject(msg).toString());
     }
 
     // Обработка запросов контента GET/POST запросами

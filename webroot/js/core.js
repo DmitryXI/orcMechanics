@@ -185,30 +185,6 @@ function onMessge(err, msg){
             log.debug("Session confirmed from server");
 
             w().ueb.send("core", JSON.stringify({"usid":w().user.usid,"address":w().user.clientAddress,"action":"testAction","description":"Не забыть, что регистрируемся на адрес клиентской сессии, а отправляем сообщения на кор"}));
-
-//            let usid = getCookie("user.usid");
-//            let clid = getCookie("user.clid");
-//            if(clid === null){ w().user.clid = getRandomString(16); }
-//            else{ w().user.clid = clid; }
-//            w().user.status = "confirm";
-//            if(usid !== null){                                                                  // Запрос восстановления старой сессии, если есть в куках
-//                log.debug("Trying restoring old session: usid="+usid+", clid="+clid);
-//                w().ueb.send(w().user.clientAddress, JSON.stringify({"usid":w().user.usid,"clid":w().user.clid,"action":"restoreClientSession","rusid":usid}));
-//            }else{                                                                              // Запрос на подтверждение принятия новой сессии
-//                log.debug("Confirm new session");
-//                w().ueb.send(w().user.clientAddress, JSON.stringify({"usid":w().user.usid,"clid":w().user.clid,"action":"confirmClientSession"}));
-//            }
-//
-//            log.debug("Confirm session from client");
-//            w().user.status = "confirm";
-//            w().ueb.send(w().user.clientAddress, JSON.stringify({"usid":w().user.usid,"clid":w().user.clid,"action":"confirmClientSession"}));
-//
-//            setCookie("user.usid", w().user.usid, 1);                             // Сохраняем в куках идентификатор сессии
-//            setCookie("user.clientAddress", w().user.clientAddress, 1);           // Сохраняем в куках адрес сессии
-//            setCookie("user.clid", w().user.clid, 1);                             // Сохраняем в куках идентификатор клиента
-//        }else if((w().user.status === "confirm") && (body.action === "confirmClientSession")){       // Если это подтверждение готовности сессии
-//            log.debug("Session ready");
-//            w().user.status = "ready";
         }
     }else{
         log.error("Unexpected message in channel "+msg.address);

@@ -89,6 +89,7 @@ public class Core extends AbstractVerticle {
         String host    = (String) msg.get("host");
         String port    = (String) msg.get("port");
         String address = (String) msg.get("address");
+        String reason  = null;
 
         switch ((String) msg.get("action")){
             case "clientRegistration":                                          // Запрос клиентской сессии
@@ -100,20 +101,31 @@ public class Core extends AbstractVerticle {
                     if (clientId != null) {
                         String clid = (String) msg.get("clid");
                         if (clientId.equals(clid)) {
-                            if (clientSessions.getSessionUidByHostport(host+":"+port) == null) {
+                            String status = clientSessions.getStatus(uid);
+                            String hpUid = clientSessions.getSessionUidByHostport(host+":"+port);
+                            if (((hpUid == null) && status.equals("closed")) || (hpUid == uid)) {
                                 clientSessions.setHostPort(host, port, uid);
                                 clientSessions.setStatus("registration", uid);
                                 clientSessions.setActivity(uid);
                                 ses = clientSessions.getSession(uid);
                             }else {
-                                log.error("Core::onServerMessage: session for "+host+":"+port+" already exists: "+clientSessions.getSessionUidByHostport(host+":"+port));
+                                log.error("Core::onServerMessage: session for "+host+":"+port+" already exists, but sessions uids not equals or not exists, but status requaried sesssion by uid not closed");
                                 return;
                             }
                         }
                     }
                 }
 
-                if (ses == null) {                                                                          // Если идентификатора сессии нет, создаём новую
+                if (ses != null) {                                                                          // Отправляем старую сессию
+                    System.out.println("Send old session: "+uid);
+
+                    eb.send("server", new JSONObject()
+                            .put("from", localAddress)
+                            .put("action", "newClientSession")
+                            .put("usid", uid)
+                            .put("address", clientSessions.getAddress(uid))
+                            .toString());
+                } else {                                                                                    // Создаём новую сессию
                     System.out.println("Creating new session");
 
                     uid = clientSessions.create();
@@ -136,7 +148,6 @@ public class Core extends AbstractVerticle {
             case "clientConfirm":                                                 // Подтверждение сессии клиентом
                 System.out.println("Confirm client session");
                 String clientId = clientSessions.getClientId(uid);
-                String reason = null;
 
                 if (clientId != null) {
                     String clid = (String) msg.get("clid");
@@ -163,57 +174,34 @@ public class Core extends AbstractVerticle {
                     log.error("Core::onServerMessage: Can't confirm session ("+reason+") for "+msg.toString());
                     return;
                 }
-                break;
+            case "clientUnregister":                                                 // Снятие регистрации с сессии клиента
+                System.out.println("Unregister client session");
 
-//            case "clientSessionRequest":                                        // Запрос на создание новой сессии
-//                log.debug("Creating empty session");
-//
-//                uid = clientSessions.create();
-//
-//                if (uid != null){
-//                    eb.send("server", new JSONObject()
-//                            .put("from", localAddress)
-//                            .put("action", "newClientSession")
-//                            .put("usid", uid)
-//                            .put("address", clientSessions.getAddress(uid))
-//                            .toString());
-//                }
-//                break;
-//            case "confirmingClientSession":                                     // Подтверждение сессии клиентом
-//                log.debug("Confirming empty session");
-//
-//                String address = (String) msg.get("address");
-//
-//                ses = clientSessions.getSessionByAddress(address);
-//
-//                if (ses == null) {                                              // Если подтверждённая клиентом сессия не найдена - дать команду на удаление её адреса
-//                    log.error("Core::onServerMessage: no session for address: "+address);
-//                    eb.send("server", new JSONObject()
-//                            .put("from", localAddress)
-//                            .put("action", "removeClientAddress")
-//                            .put("address", address)
-//                            .toString());
-//                    return;
-//                }
-//
-//                uid = (String) ses.get("uid");
-//
-//                if (clientSessions.getStatus(uid).equals("confirmed")) {        // Если это запрос на подтверждение уже подтверждённой и активной сессии - сверить хост:порт клиента
-//                    // Здесь проверка на наличие активного подключения (хост:порт)
-//                }else {                                                                                                         // Если сессия ранее не подтверждалась - подтверждаем безусловно
-//                    clientSessions.setHostPort((String) msg.get("host"), Integer.valueOf((String) msg.get("port")), uid);
-//                    clientSessions.setStatus("confirmed", uid);
-//                    clientSessions.setActivity(uid);
-//                    eb.consumer(address, this::onClientMessage);                                                                // Подписываемся на сообщения от клиента
-//
-//                    eb.send(address, new JSONObject()
-//                            .put("from", localAddress)
-//                            .put("action", "confirmingClientSession")
-//                            .put("usid", uid)
-//                            .put("address", address)
-//                            .toString());
-//                }
-//                break;
+                ses = clientSessions.getSessionByAddress(address);
+                if (ses != null) {
+                    if (ses == clientSessions.getSessionByHostport(host + ":" + port)) {
+                        uid = (String) ses.get("uid");
+                        clientSessions.setStatus("unregister", uid);
+                        clientSessions.setActivity(uid);
+                    } else { ses = null; reason = "sessions host:port not equals"; }
+                } else { reason = "session with address "+address+" not exists"; }
+
+                if (ses == null) {
+                    log.error("Core::onServerMessage: Can't confirm session ("+reason+") for "+msg.toString());
+                    return;
+                }
+                break;
+            case "clientSocketClosed":                                                 // Проверка статуса клиентской сессии при закрытии сокета
+                System.out.println("Checking client sessions on closing socket");
+
+                ses = clientSessions.getSessionByHostport(host + ":" + port);
+                if (ses != null) {
+                    uid = (String) ses.get("uid");
+                    clientSessions.setStatus("closed", uid);
+                    clientSessions.setHostPort(null, null, uid);
+                    System.out.println("Session from host:port "+host+":"+port+" closed");
+                }
+                break;
             default:
                 log.error("Core::onServerMessage: Unexpected action: "+(String) msg.get("action"));
         }
