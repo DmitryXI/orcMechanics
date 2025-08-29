@@ -35,7 +35,7 @@ public class ClientSessionsManager extends SessionsManager {
         if (ses != null) {
             return (String) ses.get("uid");
         }else {
-            log.error("getSessionUidByHostport: can't get session UID for host:port: "+hostPort);
+//            log.error("getSessionUidByHostport: can't get session UID for host:port: "+hostPort);
         }
 
         return null;
@@ -89,6 +89,7 @@ public class ClientSessionsManager extends SessionsManager {
         HashMap<String, Object> ses = getSession(uid);
 
         if (ses != null) {
+            hostPorts.remove(ses.get("host")+":"+ses.get("port"));
             ses.put("host", host);
             ses.put("port", port);
             hostPorts.put(host+":"+port, ses);
@@ -123,10 +124,26 @@ public class ClientSessionsManager extends SessionsManager {
             ses.put("clientId", clientId);
             return true;
         }else {
-            log.error("setClientId: can't set client id "+clientId+" to session "+uid);
+//            log.error("setClientId: Can't set client id "+clientId+" to session "+uid);
         }
 
         return false;
+    }
+
+    // Удаление просроченных клиентских сессий
+    @Override
+    public HashMap<String, Object> killTheDead(){
+
+        HashMap<String, Object> doomeds = super.killTheDead();
+
+        if (doomeds.size() > 0) {
+            doomeds.forEach((k, v) -> {
+                hostPorts.remove(((HashMap<String, Object>)v).get("host")+":"+((HashMap<String, Object>) v).get("port"));
+                log.debug("Index "+k+" removed by timeout");
+            });
+        }
+
+        return doomeds;
     }
 }
 

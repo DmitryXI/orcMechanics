@@ -91,7 +91,7 @@ function docReady(){
         if(w().user.status === "connecting"){
             log.info("Request general registration");
             w().user.status = "preRegistration";
-            w().ueb.registerHandler("general", {"side":"client","action":"registration","usid":w().user.usid,"clid":w().user.clid}, onMessge);   // Отправляем запрос на регистрацию на общий адрес (для получения персонального адреса)
+            w().ueb.registerHandler("general", {"side":"client","action":"registration","usid":w().user.usid,"clid":w().user.clid}, onMessage);   // Отправляем запрос на регистрацию на общий адрес (для получения персонального адреса)
         }
     };
 

@@ -11,10 +11,11 @@ public class SessionsManager {
     protected Integer                 uidLen          = null;                       // Длина идентификатора сессии в символах
     protected String                  uidChars        = null;                       // Набор символов для генерации UID'ов
     protected String                  addressPrefix   = null;                       // Префикс для UID'ов сессий
+    protected Integer                 ttl             = null;                       // Время жизни неактивной сессии
     protected Random                  rnd             = null;                       // Рандомайзер
-    private HashMap<String, Object> sessions          = null;                        // Карта объектов с полными данными сессий
-    private HashMap<String, Long>   lastActivity      = null;                        // Карта UID сессий с временем последней активности
-    private HashMap<String, Object> addresses         = null;                        // Индекс по адресу
+    private HashMap<String, Object> sessions          = null;                       // Карта объектов с полными данными сессий
+    private HashMap<String, Long>   lastActivity      = null;                       // Карта UID сессий с временем последней активности
+    private HashMap<String, Object> addresses         = null;                       // Индекс по адресу
 
 
 
@@ -24,10 +25,21 @@ public class SessionsManager {
         uidLen              = 12;
         uidChars            = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         this.addressPrefix  = addressPrefix;
+        ttl                 = 30;                                   // Допустимое время простоя сессии в секндах
         rnd                 = new Random();
         sessions = new HashMap<>();
         lastActivity        = new HashMap<>();
         addresses           = new HashMap<>();
+    }
+
+    // Установить ttl
+    public void setTtl(Integer ttl) {
+        this.ttl = ttl;
+    }
+
+    // Получить ttl
+    public Integer getTtl() {
+        return this.ttl;
     }
 
     // Создать сессию
@@ -55,6 +67,19 @@ public class SessionsManager {
         setActivity(ts, uid);                                       // Устанавливаем время последнего обновления
 
         return uid;
+    }
+
+    // Удалить сессию
+    public boolean remove(String uid){
+
+        if (sessions.containsKey(uid)){
+            String address = (String) getSession(uid).get("address");
+            addresses.remove(address);
+            lastActivity.remove(uid);
+            sessions.remove(uid);
+        }
+
+        return false;
     }
 
     // Получить объект сессии по UID
@@ -185,5 +210,27 @@ public class SessionsManager {
         }
 
         return new String(text);
+    }
+
+    // Удаление просроченных сессий
+    public HashMap<String, Object> killTheDead(){
+
+        HashMap<String, Object> doomeds = new HashMap<>();
+        Long                    ts  = getCurrentTimeStamp();
+
+        sessions.forEach((k, v) -> {
+            if ((ts - getActivity(k)) > ttl) {
+                doomeds.put(k, v);
+            }
+        });
+
+        if (doomeds.size() > 0) {
+            doomeds.forEach((k, v) -> {
+                this.remove(k);
+                log.debug("Session "+k+" removed by timeout");
+            });
+        }
+
+        return doomeds;
     }
 }

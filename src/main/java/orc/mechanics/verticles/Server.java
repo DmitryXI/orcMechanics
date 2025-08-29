@@ -112,11 +112,16 @@ public class Server extends AbstractVerticle {
 
         switch ((String) msg.get("action")){
             case "newClientSession":
-//                log.debug("Sending session, adding address permission");
-                System.out.println("Sending session, adding address permission for "+msg.get("address"));
+//                log.debug("Server::onCoreMessage: Sending session, adding address permission");
+//                System.out.println("Sending session, adding address permission for "+msg.get("address"));
                 addEbPermit((String) msg.get("address"));                                                   // Добавляем разрешение для адреса новой сессии
                 msg.put("from", "server");
                 eb.send("general", (new JSONObject(msg)).toString());
+                break;
+            case "removeAddress":
+//                log.debug("Server::onCoreMessage: removing client session address"+msg.get("address"));
+//                System.out.println("removing client session address: "+msg.get("address"));
+                delEbPermit((String) msg.get("address"));                                                   // Удаляем разрешение для адреса новой сессии
                 break;
             default:
                 log.error("Server::onCoreMessage: Unexpected action: "+(String) msg.get("action"));
@@ -128,33 +133,33 @@ public class Server extends AbstractVerticle {
 
         switch (event.type()){
             case SOCKET_CREATED:
-                System.out.println("Received SOCKET_CREATED from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
+//                System.out.println("Received SOCKET_CREATED from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
                 break;
             case SOCKET_CLOSED:
-                System.out.println("Received SOCKET_CLOSED from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
+//                System.out.println("Received SOCKET_CLOSED from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
                 onClientSocketClosed(event);
                 break;
             case SOCKET_PING:
 //                System.out.println("Received PING from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
                 break;
             case REGISTER:
-                System.out.println("Received REGISTER from address "+event.getRawMessage().getString("address"));
+//                System.out.println("Received REGISTER from address "+event.getRawMessage().getString("address"));
 //                System.out.println(event.getRawMessage().toString());
                 break;
             case REGISTERED:
-                System.out.println("Received REGISTERED from address "+event.getRawMessage().getString("address"));
+//                System.out.println("Received REGISTERED from address "+event.getRawMessage().getString("address"));
                 onClientRegistered(event);
                 break;
             case UNREGISTER:
-                System.out.println("Received UNREGISTER from address "+event.getRawMessage().getString("address")+" and "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
+//                System.out.println("Received UNREGISTER from address "+event.getRawMessage().getString("address")+" and "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
                 onClientUnRegister(event);
                 break;
             case SEND:
-                System.out.println("Received SEND for address "+event.getRawMessage().getString("address"));
+//                System.out.println("Received SEND for address "+event.getRawMessage().getString("address"));
                 break;
             case RECEIVE:
-                System.out.println("Received RECEIVE from address "+event.getRawMessage().getString("address"));
-                System.out.println(event.getRawMessage().toString());
+//                System.out.println("Received RECEIVE from address "+event.getRawMessage().getString("address"));
+//                System.out.println(event.getRawMessage().toString());
                 break;
             default:
                 System.out.println("Received unexpected "+event.type()+" from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
@@ -181,7 +186,7 @@ public class Server extends AbstractVerticle {
 
         // Подтверждаем регистрацию клиента на общем канале и отправляем сообщение на Core для поиска/создания клиентской сессии
         if (address.equals("general")) {
-            System.out.println("Client general registered with headers: "+event.getRawMessage().getString("headers"));
+//            System.out.println("Client general registered with headers: "+event.getRawMessage().getString("headers"));
 
             if ((msg.get("action") != null) && (msg.get("action").equals("registration"))){
                 msg.put("from", localAddress);
@@ -194,7 +199,7 @@ public class Server extends AbstractVerticle {
                 log.error("Server::onClientRegistered: Unexpected action: "+msg.get("action"));
             }
         } else if ((address.length() == 14) && (address.substring(0,2).equals("cl"))) {
-            System.out.println("Client personal registered with headers: "+event.getRawMessage().getString("headers"));
+//            System.out.println("Client personal registered with headers: "+event.getRawMessage().getString("headers"));
 
             if ((msg.get("action") != null) && (msg.get("action").equals("registration"))){
                 msg.put("from", localAddress);
@@ -228,7 +233,7 @@ public class Server extends AbstractVerticle {
 
         // Обработка запросов клиентов на снятие регистрации клиентской сессии
         if ((address.length() == 14) && (address.substring(0, 2).equals("cl"))) {
-            System.out.println("Server::onClientUnRegistered: Unregister request for client session with address: "+address);
+//            System.out.println("Server::onClientUnRegistered: Unregister request for client session with address: "+address);
             delEbPermit(address);
             msg.put("from", localAddress);
             msg.put("address", address);
@@ -245,7 +250,7 @@ public class Server extends AbstractVerticle {
         HashMap<String, Object> msg = new HashMap<>();
 
         // Обработка сообщений о закрытии клиентского сокета
-        System.out.println("Server::onClientSocketClosed: Closed client socket with host:port: "+event.socket().remoteAddress().host()+":"+String.valueOf(event.socket().remoteAddress().port()));
+//        System.out.println("Server::onClientSocketClosed: Closed client socket with host:port: "+event.socket().remoteAddress().host()+":"+String.valueOf(event.socket().remoteAddress().port()));
         msg.put("from", localAddress);
         msg.put("action", "clientSocketClosed");
         msg.put("host", event.socket().remoteAddress().host());
