@@ -3,11 +3,12 @@
 // Глобальное хранилище переменных на уровне окна/вкладки
 window.vars = {
     "logLevel" : 8,              // Уровень журналирования в консоль
-    "logList"  : [],             // Список номеров важности сообщений для вывода в консоль (альтернатива уровню (logLevel))
+    "tagList"  : [],             // Список тэгов для отображения по слоям
     "logger"   : new Logger(),   // Глобальный логер
     "user"     : null,           // Информация о текущем пользователе
     "game"     : null,           // Идентификатор сессии пользователя
     "forms"    : {},             // Список активных форм на случай изменения размеров окна
+    "resources": {},             // Список загруженных с сервера ресурсов (сырой контент)
     "ueb"      : null,           // Шина данных (EventBus) сессии клиента
     "geb"      : null,           // Шина данных (EventBus) игровой сессии (пока будет таже, что и менеджерская)
     "baseUrl"  : null,           // Путь к корневой точке для запросов к веб-серверу
@@ -53,7 +54,7 @@ function docReady(){
     w().baseRequestHeaders = {"cache-control":"no-cache, no-store, must-revalidate","pragma":"no-cache","expires":"0"};
 
     // Добавляем body в список активных форм
-    w().forms["body"] = {"function":"bodyResize","params":[]};      // Для теста. Врядли будет использоваться
+    w().forms["body"] = {"element":[d("body")],"onResize":"bodyResize","onResizeParams":[]};      // Для теста. Врядли будет использоваться
     w().user.status = "connecting";
 
     // Шина данных клиентской сессии
@@ -91,7 +92,7 @@ function docReady(){
         if(w().user.status === "connecting"){
             log.info("Request general registration");
             w().user.status = "preRegistration";
-            w().ueb.registerHandler("general", {"side":"client","action":"registration","usid":w().user.usid,"clid":w().user.clid}, onMessage);   // Отправляем запрос на регистрацию на общий адрес (для получения персонального адреса)
+            w().ueb.registerHandler("general", {"action":"registration","usid":w().user.usid,"clid":w().user.clid}, onMessage);   // Отправляем запрос на регистрацию на общий адрес (для получения персонального адреса)
         }
     };
 

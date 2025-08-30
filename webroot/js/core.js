@@ -7,13 +7,84 @@ window.vars = {};
 function w(){ return window.vars; }
 
 // Получить элемент документа по id
-function d(id=null){
+function d(elId=null, parentElement=null){
 
-    if((id !== undefined) && (id !== null)){
-        return document.getElementById(id);
+    if(parentElement === null){
+        parentElement = document;
+    }else if(!(parentElement instanceof HTMLElement)){
+        log.error("Parent element must be instance of null or HTMLElement or HTMLDocument");
+        return null;
     }
 
-    return document;
+    if(typeof elId === "string"){
+        return parentElement.querySelector('#'+elId);
+    }
+
+    log.error("Elemnt id must be string. "+(typeof elId)+" setted");
+    return null;
+}
+
+// Получить HTML-форму по id либо сразу HTMLElement формы по номеру
+function f(formId, elementNumber=null){
+    if(w().forms[formId] !== undefined){
+        if(typeof elementNumber == "number"){
+            return w().forms[formId].element[elementNumber];
+        }else{
+            return w().forms[formId];
+        }
+    }
+
+    return null;
+}
+
+// Получить массив объектов класса HTMLElement HTML-кода
+function getElementsFromHTML(srcHTML){
+
+    let elements = [];
+    let tDiv = document.createElement("div");
+    tDiv.innerHTML = srcHTML;
+
+    for (let i = 0; i < tDiv.children.length; i++) {
+        elements.push(tDiv.children[i]);
+    }
+    tDiv.remove();
+
+    return elements;
+}
+
+// Получить объект класса HTMLElement по id из HTML-кода
+function getElementFromHTML(elId, srcHTML){
+    let tDiv = document.createElement("div");
+    tDiv.innerHTML = srcHTML;
+    let el = d(elId, tDiv);
+    tDiv.remove();
+
+    return el;
+}
+
+// Вырезать HTMLElement из родительского элемента
+function cutElementFromElement(elId, parentElement){
+
+    let el = parentElement.querySelector('#'+elId)
+
+    if(el !== null){
+        let clone = el.cloneNode(true)
+        el.remove()
+
+        return clone
+    }
+
+    return null;
+}
+
+// Получить размеры рабочей области в пикселях
+function getWorkSize() {
+    var e = window, a = 'inner';
+    if (!('innerWidth' in window )) {
+        a = 'client';
+        e = document.documentElement || document.body;
+    }
+    return { width : e[ a+'Width' ] , height : e[ a+'Height' ] };
 }
 
 // Сохранение/отображение/отправка отладочных сообщений
@@ -76,13 +147,26 @@ function getBaseUrl(){
 }
 
 // Изменение размеров активных форм
-function refreshForms(){
+function refreshForms(formId=null){
 
-    for(let formId in w().forms){
-        log.debug7("form id to resize: "+formId);
-        window[w().forms[formId].function](...w().forms[formId].params);
+    if(formId !== null){
+        if(window[w().forms[formId].onResize] instanceof Function){
+            let params = w().forms[formId].onResizeParams;
+            params.unshift(w().forms[formId].element[0]);
+            window[w().forms[formId].onResize](...w().forms[formId].onResizeParams);
+        }
+
+        return;
     }
 
+    for(formId in w().forms){
+        log.debug7("form id to resize: "+formId);
+        if(window[w().forms[formId].onResize] instanceof Function){
+            let params = w().forms[formId].onResizeParams;
+            params.unshift(w().forms[formId].element[0]);
+            window[w().forms[formId].onResize](...w().forms[formId].onResizeParams);
+        }
+    }
 }
 
 // Генерация случайной строки
@@ -126,12 +210,28 @@ function eraseCookie(name) {
     document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 }
 
+// Получение контента по id контента
+function getContent(contentId){
+    if((w().resources[contentId] !== null) && (w().resources[contentId] !== undefined)){
+        return w().resources[contentId];
+    }else {
+        let resp = loadContent(contentId, false);
+        if (resp instanceof XMLHttpRequest) {
+            w().resources[contentId] = resp.responseText;
+            return w().resources[contentId];
+        }
+    }
+
+    log.error("Can't load content for id "+contentId);
+    return null;
+}
+
 // Получение контента от сервера через POST запрос
 // async - true|false (синхронный|асинхронный), on-ready -error, -abort - ссылки на функции обратного вызова
 // postParams - объект, который будет сериализован в JSONString и отправлен как данные POST-запроса
 // requestHeader - объект с заголовками HTTP-запроса
 // transitStr - объект, который будет передаваться в callBack-функции (лучше всего использовать строку)
-function getContent(contentId, async, transitStr=null, onready=null, onerror=null, onabort=null, postParams=null, requestHeaders=null){
+function loadContent(contentId, async, transitStr=null, onready=null, onerror=null, onabort=null, postParams=null, requestHeaders=null){
     proto = "POST";
     if (async !== false) {async = true;}
     let client  = new XMLHttpRequest();
@@ -204,9 +304,9 @@ function loadScript(contentId, async=false){
 
     if(el === null){
         if(async){              // Асинхронная загрузка скрипта
-            return getContent(contentId, async, scriptId, addScript);
+            return loadContent(contentId, async, scriptId, addScript);
         }else{                  // Синхронная загрузка скрипта
-            let resp = getContent(contentId, async, scriptId);
+            let resp = loadContent(contentId, async, scriptId);
 
             if (resp instanceof XMLHttpRequest) {
                 return addScript(resp, false, scriptId);
@@ -246,19 +346,134 @@ function addScript(resp, error, scriptId){
     return true;
 }
 
+// Добавить форму в документ
+// Добавляет в документ форму на основании контента по id ресурса (если нужно, загружает с сервера).
+// resizeParams - параметры для обработчика onResize, cook - колбэк-функция-обработчик сырого контента, cookParams - параметры для функции cook
+function addHTMLForm(contentId, formId, resizeParams=[], cook=null, cookParams=[]){
+
+    if((w().forms[formId] === null) || (w().forms[formId] === undefined)){                      // Проверяем наличие формы в хранилище форм
+        log.debug("Requested requested content for form with contentId="+formId);
+
+        let srcHtml = getContent("core/html/requestName");
+
+        if(srcHtml === null){
+            log.error("Can't get source HTML for contentId="+contentId+" for form with formId="+formId);
+            return null;
+        }
+
+        let elements;
+
+        if(cook !== null){                                                                      // Если передан обработчик сырого контента, то он должен вернуть элементы формы
+            cookParams.unshift(srcHtml);                                                        // Добавляем первым параметром в списке исходный HTML
+            elements = cook(...cookParams);
+        }else{                                                                                  // Если спец.обработчик не задан, создаём элементы стандартным образом
+            let html = srcHtml.replaceAll("${id}", formId).replaceAll("${z}", 1);
+            let elements = getElementsFromHTML(html);
+        }
+
+        // Добавляем форму в хранилище
+        w().forms[formId] = {
+            "id"             : formId,
+            "element"        : elements,
+            "onResize"       : null,
+            "onResizeParams" : [],
+            "getFormElement" : function(num) { return this.element[num]; },
+            "getHTMLElement" : function(id=null)  { return getInFormHTMLElement(this, id); }
+        };
+
+        // Подключаем обработчик формы на событие изменения размера рабочей области (именование стандартизировано)
+        let resizeFuncName = formId+"_onResize";
+        if(window[resizeFuncName] instanceof Function){
+            w().forms[formId].onResize       = resizeFuncName;
+            w().forms[formId].onResizeParams = resizeParams;
+            refreshForms(formId);
+        }
+    }else{
+        log.debug("Form "+formId+" already exists");
+    }
+
+    return w().forms[formId];
+}
+
+// Получить элемент HTML-формы по номеру (по умолчанию нулевой (стандартно там находится собранная форма))
+function getFormElement(formId, number=0){
+
+    if(w().forms[formId] !== null){
+        return w().forms[formId].element[number];
+    }
+
+    return null;
+}
+
+// Получить HTML-элемент HTML-формы по id (сначала идёт поиск в нулевом элементе (обычно добавлен в body), затем по остальным элементам формы (обычно в body не добавлены))
+// Идентификатор передаётся без идентификатора формы (добавляется автоматически)
+function getInFormHTMLElement(form, elementId){
+
+    let el;
+    if(elementId === null){
+        elementId = form.id;
+    }else{
+        elementId = form.id+"_"+elementId;
+    }
+
+    for(num in form.element){
+        if(form.element[num].id === elementId){
+            return form.element[num];
+        }
+        el = d(elementId, form.element[num]);
+        if(el !== null){
+            return el;
+        }
+    }
+
+    return null;
+}
+
+// Удалить форму из документа и хранилища (или где есть)
+function delHTMLForm(formId){
+
+    let el = d(formId);
+
+    if(el !== null){
+        el.remove();
+    }
+
+    if(w().forms[formId] !== null){
+        w().forms[formId] = null;
+    }
+}
+
+// Удалить форму ТОЛЬКО из документа
+function removeHTMLForm(formId){
+
+    let el = d(formId);
+
+    if(el !== null){
+        el.remove();
+    }
+}
+
+// Задать дефолтовую функцию автосайзинга HTML-форме
+function setHTMLFormAutoSize(formId, width=null, height=null){
+    // Здесь будем создавать лямбду для onResize формы, которая будет размещать форму по центру экрана и задавать ей размеры в соответствии с указанными процентами...
+}
+
+// Обработка события изменения размера рабочей области для элемента body
+function bodyResize(){
+//    log.debug("On body resize");
+}
 
 
 
 
 
-
-// Штатная отправка сообщений серверу
-function sendMsg(address, action, msg={}){
+// Штатная отправка сообщений серверу. to - адрес получателя, action - действие (обязательное поле), msg - объект с прикладными полями сообщения
+function sendMsg(to, action, msg={}){
     if(w().user.connected){
         msg["from"]     = w().user.clientAddress            // Адрес отправителя
         msg["action"]   = action;                           // Действие
         msg["usid"]     = w().user.usid;                    // Идентификатор сессии
-        w().ueb.send(address, JSON.stringify(msg));
+        w().ueb.send(to, JSON.stringify(msg));
 
         return true;
     }else{
@@ -310,24 +525,26 @@ function onMessage(err, msg){
 
             w().ueb.unregisterHandler("general", onMessage);                                        // Снимаем регистрацию для публичного адреса
                                                                                                     // И регистрируемся по адресу клиентской сессии
-            w().ueb.registerHandler(w().user.clientAddress, {"side":"client","action":"registration","usid":w().user.usid,"clid":w().user.clid,"address":w().user.clientAddress}, onMessage);
+            w().ueb.registerHandler(w().user.clientAddress, {"action":"registration","usid":w().user.usid,"clid":w().user.clid,"address":w().user.clientAddress}, onMessage);
         }else{
             log.error("Unexpected message in channel general");
             log.error(msg);
             return;
         }
     }else if(msg.address === w().user.clientAddress){                                               // Обработка сообщений на персональный адрес клиента
-        if((w().user.status === "registration") && (body.action === "serverConfirm")){              // Если это подтверждение регистрации по клиентскому адресу
+        if(body.action === "error"){
+            log.error("from "+body.from+": "+body.text);                                            // Обработка ошибки со стороны сервера
+            return;
+        }else if((w().user.status === "registration") && (body.action === "serverConfirm")){        // Если это подтверждение регистрации по клиентскому адресу
             log.debug("Session confirmed from server");
 
-            w().user.status = "ready";                                                              // Выставляем статус готовности клиентской сессии
+            w().user.status = "ready";                                                               // Выставляем статус готовности клиентской сессии
 
-            if(loadScript("core/js/contentManager")){                                               // Синхронно подгружаем скрипт базового контентного модуля
+            if(loadScript("core/js/contentManager")){                                                // Синхронно подгружаем скрипт базового контентного модуля
                 log.debug("Main content module loaded");
             }else{
                 log.error("Error loading main content module");
             }
-//            w().ueb.send("core", JSON.stringify({"usid":w().user.usid,"address":w().user.clientAddress,"action":"testAction","description":"Не забыть, что регистрируемся на адрес клиентской сессии, а отправляем сообщения на кор"}));
         }
     }else{
         log.error("Unexpected message in channel "+msg.address);
