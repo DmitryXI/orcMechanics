@@ -49,7 +49,7 @@ public class ClientSessionsManager extends SessionsManager {
         if (ses != null) {
             return ses.get("host")+":"+ses.get("port");
         }else {
-            log.error("getHostPort: can't get host:port for session "+uid);
+//            log.error("getHostPort: can't get host:port for session "+uid);
         }
 
         return null;
@@ -77,7 +77,7 @@ public class ClientSessionsManager extends SessionsManager {
         if (ses != null) {
             return (Integer) ses.get("port");
         }else {
-            log.error("getPort: can't get port for session "+uid);
+//            log.error("getPort: can't get port for session "+uid);
         }
 
         return null;
@@ -95,7 +95,7 @@ public class ClientSessionsManager extends SessionsManager {
             hostPorts.put(host+":"+port, ses);
             return true;
         }else {
-            log.error("setHostPort: can't set host:port "+host+":"+port+" to session "+uid);
+//            log.error("setHostPort: can't set host:port "+host+":"+port+" to session "+uid);
         }
 
         return false;
@@ -109,7 +109,7 @@ public class ClientSessionsManager extends SessionsManager {
         if (ses != null) {
             return (String) ses.get("clientId");
         }else {
-            log.error("getClientId: can't get client id for session "+uid);
+//            log.error("getClientId: can't get client id for session "+uid);
         }
 
         return null;
@@ -132,9 +132,9 @@ public class ClientSessionsManager extends SessionsManager {
 
     // Удаление просроченных клиентских сессий
     @Override
-    public HashMap<String, Object> killTheDead(){
+    public HashMap<String, Object> removeTheDead(){
 
-        HashMap<String, Object> doomeds = super.killTheDead();
+        HashMap<String, Object> doomeds = super.removeTheDead();
 
         if (doomeds.size() > 0) {
             doomeds.forEach((k, v) -> {

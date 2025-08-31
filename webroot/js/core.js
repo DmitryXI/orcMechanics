@@ -650,7 +650,7 @@ function onMessage(err, msg){
             log.error("Received ERROR from "+body.from+": "+body.text);                             // Обработка ошибки со стороны сервера
             return;
         }else if((w().user.status === "registration") && (body.action === "serverConfirm")){        // Если это подтверждение регистрации по клиентскому адресу
-            log.info("Session "+w().user.usid+"confirmed from server");
+            log.info("Session "+w().user.usid+" confirmed from server");
 
             w().user.status = "ready";                                                              // Выставляем статус готовности клиентской сессии
             log.data.debug("Set user.status: "+w().user.status);

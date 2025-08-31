@@ -213,7 +213,7 @@ public class SessionsManager {
     }
 
     // Удаление просроченных сессий
-    public HashMap<String, Object> killTheDead(){
+    public HashMap<String, Object> removeTheDead(){
 
         HashMap<String, Object> doomeds = new HashMap<>();
         Long                    ts  = getCurrentTimeStamp();

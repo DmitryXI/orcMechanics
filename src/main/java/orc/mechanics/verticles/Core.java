@@ -21,9 +21,10 @@ public class Core extends AbstractVerticle {
     private Logger                   log                    = LoggerFactory.getLogger(Core.class);      // Логер
     private String                   localAddress           = "core";                                   // Локальный адрес вертикла
     private LocalMap<String, String> verticlesAddresses     = null;                                     // Массив персональных адресов вертиклов на шине данных
+    private LocalMap<String, String> gamesList              = null;                                     // Список игр
     private EventBus                 eb                     = null;                                     // Шина данных для обмена сообщениями вертиклами между собой и вертиклов с веб-клиентами
     private ClientSessionsManager    clientSessions         = null;                                     // Менеджер сессий клиентов
-    private HashMap<String, Object>  disabledClientSessions = null;                                     // Хранилище отключенных сессий клиентов
+//    private HashMap<String, Object>  disabledClientSessions = null;                                     // Хранилище отключенных сессий клиентов
     private SessionsManager          gameSessions           = null;                                     // Менеджер сессий игр
 
 
@@ -37,16 +38,17 @@ public class Core extends AbstractVerticle {
 
         eb                  = vertx.eventBus();                                                         // Шина данных для обмена сообщениями вертиклами между собой и вертиклов с веб-клиентами
         verticlesAddresses  = vertx.sharedData().getLocalMap("verticlesAddresses");                  // Подключаем общий массив адресов вертиклов
+        gamesList           = vertx.sharedData().getLocalMap("gamesList");                           // Подключаем список игр
 
         verticlesAddresses.put(localAddress, "core");                                                // Регистрируем адрес в общем списке
-        eb.localConsumer(localAddress, this::onMessage);                                           // Подписываемся на сообщения от Server
-        clientSessions.setTtl(60);                                                                     // Устанавливаем время жизни неактивной клиентской сессии в 10 минут
+        eb.localConsumer(localAddress, this::onMessage);                                                // Подписываемся на сообщения от Server
+        clientSessions.setTtl(600);                                                                     // Устанавливаем время жизни неактивной клиентской сессии в 10 минут
 
         if (clientSessions.getTtl() > 0) {                                                              // Проверяем наличие критически неактивных сессий по таймеру и удаляем их
             vertx.setPeriodic(
                     clientSessions.getTtl(),
                     h -> {
-                        HashMap<String, Object> doomeds = this.clientSessions.killTheDead();
+                        HashMap<String, Object> doomeds = this.clientSessions.removeTheDead();
 
                         if (doomeds.size() > 0) {
                             doomeds.forEach((k, v) -> {
@@ -65,7 +67,7 @@ public class Core extends AbstractVerticle {
     }
 
 
-    // Обработка внутренних сообщений
+    // Обработка входящих сообщений
     public void onMessage(Message<Object> ebMsg){
 
 //        System.out.println("Core received local message: "+ebMsg.body());
@@ -268,6 +270,15 @@ public class Core extends AbstractVerticle {
             case "setPlayerName":
                 ses.put("playerName", (String) (msg.get("name")));
                 sendClientMessage(from, "setPlayerName", new JSONObject().put("name", (String) ses.get("playerName")));
+                break;
+            case "getGamesList":
+//                System.out.println("Список игр: " + new JSONObject(gamesList).toString());
+                JSONObject resp = new JSONObject();
+                resp.put("list", new JSONObject());
+                gamesList.forEach((String gameAdderss, String gameName) -> {
+                    resp.getJSONObject("list").put(gameAdderss, gameName);
+                });
+                sendClientMessage(from,"setGamesList", resp);
                 break;
             default:
                 log.error("Core::onClientMessage: unknown action "+action+" from client="+uid+", address="+from);

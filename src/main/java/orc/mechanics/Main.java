@@ -4,6 +4,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import orc.mechanics.verticles.Core;
 import orc.mechanics.verticles.Server;
+import orc.mechanics.games.TicTacToe;
 
 
 public class Main {
@@ -22,6 +23,13 @@ public class Main {
             vertx.deployVerticle(Core.class.getName());
         }catch (Exception e){
             System.err.println("Не могу запустить ядро\n");
+            e.printStackTrace();
+        }
+
+        try {
+            vertx.deployVerticle(TicTacToe.class.getName());
+        }catch (Exception e){
+            System.err.println("Не могу запустить Крестики-нолики\n");
             e.printStackTrace();
         }
 

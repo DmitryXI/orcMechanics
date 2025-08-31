@@ -28,11 +28,13 @@ w().user = {
     "usid"          : null,         // Идентификатор клиентской сессии
     "gsid"          : null,         // Идентификатор игровой сессии
     "clientAddress" : null,         // Адрес для клиентской сессии на сервере
-    "gameAddress"   : null,         // Адрес для клиентской сессии на сервере
+    "gameAddress"   : null,         // Адрес для игровой сессии на сервере
     "connected"     : false,        // Статус подключения
     "status"        : "loading",    // Статус клиента
+    "stage"         : null,         // Этап сессии
     "clid"          : null,         // Идентификатор клиента (создаётся на стороне клиента для привязки сессии)
-    "name"          : "noname"      // Имя игрока
+    "name"          : null,         // Имя игрока
+    "gameList"      : null          // Список доступных игр
 };
 
 // Обрабатываем завершение загрузки для окна
@@ -106,10 +108,11 @@ function docReady(){
         }
     };
 
-    // Событие отключения шины данных
+    // Событие отключения шины данных и закрытия веб-сокета
     w().ueb.onclose = function() {
         log.func.debug6("main.ueb.onclose");
         log.info("Connect to server closed");
         w().user.connected = false;                         // Обновляем статус подключения
+        log.data.debug("Set user.connected: "+w().user.connected);
     }
 }
