@@ -8,6 +8,7 @@ function w(){ return window.vars; }
 
 // Получить элемент документа по id
 function d(elId=null, parentElement=null){
+    log.func.debug8("core.d: elId: "+elId+", parentElement: ", parentElement);
 
     if(parentElement === null){
         parentElement = document;
@@ -20,12 +21,14 @@ function d(elId=null, parentElement=null){
         return parentElement.querySelector('#'+elId);
     }
 
-    log.error("Elemnt id must be string. "+(typeof elId)+" setted");
+    log.error("Element id must be string. "+(typeof elId)+" setted");
     return null;
 }
 
 // Получить HTML-форму по id либо сразу HTMLElement формы по номеру
 function f(formId, elementNumber=null){
+    log.func.debug8("core.f: formId: "+formId+", elementNumber: "+elementNumber);
+
     if(w().forms[formId] !== undefined){
         if(typeof elementNumber == "number"){
             return w().forms[formId].element[elementNumber];
@@ -39,6 +42,7 @@ function f(formId, elementNumber=null){
 
 // Получить массив объектов класса HTMLElement HTML-кода
 function getElementsFromHTML(srcHTML){
+    log.func.debug7("core.getElementsFromHTML: srcHTML: "+srcHTML);
 
     let elements = [];
     let tDiv = document.createElement("div");
@@ -54,6 +58,7 @@ function getElementsFromHTML(srcHTML){
 
 // Получить объект класса HTMLElement по id из HTML-кода
 function getElementFromHTML(elId, srcHTML){
+    log.func.debug7("core.getElementFromHTML: elId: "+elId+", srcHTML: "+srcHTML);
     let tDiv = document.createElement("div");
     tDiv.innerHTML = srcHTML;
     let el = d(elId, tDiv);
@@ -63,9 +68,10 @@ function getElementFromHTML(elId, srcHTML){
 }
 
 // Вырезать HTMLElement из родительского элемента
-function cutElementFromElement(elId, parentElement){
+function cutHTMLElementFromHTMLElement(elId, parentElement){
+    log.func.debug7("core.cutHTMLElementFromHTMLElement: elId: "+elId+", parentElement: ", parentElement);
 
-    let el = parentElement.querySelector('#'+elId)
+    let el = d(elId, parentElement);
 
     if(el !== null){
         let clone = el.cloneNode(true)
@@ -79,11 +85,13 @@ function cutElementFromElement(elId, parentElement){
 
 // Получить размеры рабочей области в пикселях
 function getWorkSize() {
-    var e = window, a = 'inner';
+    let e = window, a = 'inner';
     if (!('innerWidth' in window )) {
         a = 'client';
         e = document.documentElement || document.body;
     }
+
+    log.func.debug8("core.getWorkSize: width: "+e[ a+'Width' ]+", height: "+e[ a+'Height' ]);
     return { width : e[ a+'Width' ] , height : e[ a+'Height' ] };
 }
 
@@ -91,9 +99,14 @@ function getWorkSize() {
 
 
 // Сохранение/отображение/отправка отладочных сообщений
-function Logger(printStack=false) {
+function Logger(logLevel=8, printStack=false, toConsole=true, toStorage=false) {
+    this.logLevel = Number(logLevel);
     this.printStack = printStack;
-    this.tagList = [];
+    this.toConsole = toConsole;
+    this.toStorage = toStorage;
+    this.tagList = {};
+    this.logStorage = [];
+    this.storLimit = 3000;                  // Сколько последних сообщений хранить в хранилище
 
     this.fatal   = function (message, obj=null) { this.log(message, obj, 1); },
     this.error   = function (message, obj=null) { this.log(message, obj, 2); },
@@ -105,12 +118,13 @@ function Logger(printStack=false) {
     this.debug8  = function (message, obj=null) { this.log(message, obj, 8); },
 
     // Добавление тэга к в логер
-    this.addTag = function (tag){
+    this.addTag = function (tag, logLevel=null){
         if(typeof tag === "string"){
             let uTag = tag.toUpperCase();
             let lTag = tag.toLowerCase();
-            if(!this.tagList.includes(uTag)){
-                this.tagList.push(uTag);
+            if((this.tagList[uTag] === undefined) || (this.tagList[uTag] === null)){
+                if(logLevel === null) { logLevel = this.logLevel; }
+                this.tagList[uTag] = Number(logLevel);
                 this[lTag] = {
                     "fatal"  : function (message, obj=null) { this.logger.log(message, obj, 1, uTag); },
                     "error"  : function (message, obj=null) { this.logger.log(message, obj, 2, uTag); },
@@ -124,6 +138,23 @@ function Logger(printStack=false) {
                 this[lTag].logger = this;
             }
         }
+    }
+
+    // Сохранение логов клиента в файл на диск
+    this.save = function (){
+
+        let fileName = "clientLog-"+Date.now()+".log"
+        let aId      = "aIdLogs"+Date.now();
+
+        bStr = btoa(unescape(encodeURIComponent(this.logStorage.join("\r\n"))));
+
+        document.body.insertAdjacentHTML("beforeend", '<a href="data:text/plain;base64,'+bStr+'" download="'+fileName+'" id="'+aId+'">'+fileName+'</a>');
+        let aEl = document.getElementById(aId);
+        console.log("Start downloading file \""+fileName+"\"")
+        setTimeout(() => {
+                aEl.click();
+                aEl.remove();
+        }, 1000);
     }
 
     // Разбор стэка вызова
@@ -141,11 +172,14 @@ function Logger(printStack=false) {
     this.log = function (message, obj=null, importance, tag=null){
         importance = Number(importance)
 
-        if(this.tagList.includes(tag)){
+        let logLevel = this.logLevel;
+
+        if((this.tagList[tag] !== undefined) && (this.tagList[tag] !== null)){
+            logLevel = this.tagList[tag];
             tag += " ";
         }else{ tag = ""; }
 
-        if((importance > 0) && (importance <= w().logLevel)){
+        if(importance <= logLevel){
             let importanceText;
 
             switch(importance) {
@@ -168,12 +202,19 @@ function Logger(printStack=false) {
                 break;
             }
 
+            if((this.toStorage) && (this.logStorage.length >= this.storLimit)){     // Контролируем количество хранимых записей
+                this.logStorage.shift();
+            }
+
             if(obj !== null){
-                console.log([importanceText+": "+message+": "+JSON.stringify(obj), obj]);
+                if(this.toConsole){ console.log([importanceText+": "+message+": "+JSON.stringify(obj), obj]); }
+                if(this.toStorage){ this.logStorage.push(importanceText+": "+message+": "+JSON.stringify(obj)); }
             }else if(typeof message === "object"){
-                console.log([importanceText+": "+JSON.stringify(message), message]);
+                if(this.toConsole){ console.log([importanceText+": "+JSON.stringify(message), message]); }
+                if(this.toStorage){ this.logStorage.push(importanceText+": "+JSON.stringify(message)); }
             }else{
-                console.log(importanceText+": "+message);
+                if(this.toConsole){ console.log(importanceText+": "+message); }
+                if(this.toStorage){ this.logStorage.push(importanceText+": "+message); }
             }
         }
     }
@@ -191,11 +232,13 @@ function getBaseUrl(){
     }
     baseUrl += "/"
 
+    log.func.debug7("core.getBaseUrl: result: "+baseUrl);
     return baseUrl;
 }
 
 // Изменение размеров активных форм
 function refreshForms(formId=null){
+    log.func.debug8("core.refreshForms: formId: "+formId);
 
     if(formId !== null){
         if(window[w().forms[formId].onResize] instanceof Function){
@@ -208,8 +251,8 @@ function refreshForms(formId=null){
     }
 
     for(formId in w().forms){
-        log.debug7("form id to resize: "+formId);
         if(window[w().forms[formId].onResize] instanceof Function){
+            log.form.debug8("Resizing form formId: "+formId);
             let params = w().forms[formId].onResizeParams;
             params.unshift(w().forms[formId].element[0]);
             window[w().forms[formId].onResize](...w().forms[formId].onResizeParams);
@@ -226,14 +269,16 @@ function getRandomString(len) {
         result += characters.charAt(Math.floor(Math.random() * charactersLength));
     }
 
+    log.func.debug8("core.getRandomString: "+result);
     return result;
 }
 
 // Запись значения в cookie
 function setCookie(name,value,days) {
-    var expires = "";
+    log.func.debug7("core.setCookie: name: "+name+", value: "+value+", days: "+days);
+    let expires = "";
     if (days) {
-        var date = new Date();
+        let date = new Date();
         date.setTime(date.getTime() + (days*24*60*60*1000));
         expires = "; expires=" + date.toUTCString();
     }
@@ -242,10 +287,11 @@ function setCookie(name,value,days) {
 
 // Чтение значения из cookie
 function getCookie(name) {
-    var nameEQ = name + "=";
-    var ca = document.cookie.split(';');
-    for(var i=0;i < ca.length;i++) {
-        var c = ca[i];
+    log.func.debug7("core.getCookie: name: "+name);
+    let nameEQ = name + "=";
+    let ca = document.cookie.split(';');
+    for(let i=0;i < ca.length;i++) {
+        let c = ca[i];
         while (c.charAt(0)==' ') c = c.substring(1,c.length);
         if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
     }
@@ -255,11 +301,14 @@ function getCookie(name) {
 
 // Очистка cookie
 function eraseCookie(name) {
+    log.func.debug8("core.eraseCookie: name: "+name);
     document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 }
 
 // Получение контента по id контента
 function getContent(contentId){
+    log.func.debug8("core.getContent: contentId: "+contentId);
+
     if((w().resources[contentId] !== null) && (w().resources[contentId] !== undefined)){
         return w().resources[contentId];
     }else {
@@ -280,12 +329,14 @@ function getContent(contentId){
 // requestHeader - объект с заголовками HTTP-запроса
 // transitStr - объект, который будет передаваться в callBack-функции (лучше всего использовать строку)
 function loadContent(contentId, async, transitStr=null, onready=null, onerror=null, onabort=null, postParams=null, requestHeaders=null){
+    log.func.debug7("core.loadContent: contentId: "+contentId+", async: "+async+", transitStr: "+transitStr+", onready: "+onready+", onerror: "+onerror+", onabort: "+onabort+", postParams: "+postParams+", requestHeaders: "+requestHeaders);
+
     proto = "POST";
     if (async !== false) {async = true;}
     let client  = new XMLHttpRequest();
     let isError = false;
     let url     = w().baseUrl+"content/"+contentId+"/?timestamp=" + new Date().getTime();
-    log.debug("Content requested by url "+url);
+    log.func.debug8("core.loadContent: content requested by URL: "+url);
 
     client.onreadystatechange = function() {
         if( this.readyState === 2 ) {
@@ -345,9 +396,9 @@ function loadContent(contentId, async, transitStr=null, onready=null, onerror=nu
 
 // Загрузить скрипт
 function loadScript(contentId, async=false){
+    log.func.debug6("core.loadScript: contentId: "+contentId+", async: "+async);
 
     let scriptId = contentId.replaceAll("/", "_");
-    log.debug("Loading script "+scriptId);
     let el = d(scriptId);
 
     if(el === null){
@@ -363,18 +414,19 @@ function loadScript(contentId, async=false){
             }
         }
     }else{
-        log.debug("Script "+scriptId+" already loaded");
+        log.func.debug("core.loadScript: Script "+scriptId+" already loaded");
         return true;
     }
 }
 
 // Добавить скрипт
 function addScript(resp, error, scriptId){
+    log.func.debug8("core.addScript: scriptId: "+scriptId+", error: "+error+", resp: ", resp);
 
     let el = d(scriptId);
 
     if(el !== null){
-        log.debug("Script "+scriptId+" already exists");
+        log.func.debug("core.addScript: Script "+scriptId+" already exists");
         return true;
     }
 
@@ -386,11 +438,11 @@ function addScript(resp, error, scriptId){
         el.text     = resp.responseText;
         document.getElementsByTagName('head')[0].appendChild(el);
     }catch{
-        log.error("Error creating script "+scriptId);
+        log.func.error("core.addScript: Error creating script "+scriptId);
         return false;
     }
 
-    log.debug("Added script "+scriptId);
+    log.func.debug("core.addScript: Added script "+scriptId);
     return true;
 }
 
@@ -398,14 +450,15 @@ function addScript(resp, error, scriptId){
 // Добавляет в документ форму на основании контента по id ресурса (если нужно, загружает с сервера).
 // resizeParams - параметры для обработчика onResize, cook - колбэк-функция-обработчик сырого контента, cookParams - параметры для функции cook
 function addHTMLForm(contentId, formId, resizeParams=[], cook=null, cookParams=[]){
+    log.func.debug("core.addHTMLForm: contentId: "+contentId+", formId: "+formId+", resizeParams: "+resizeParams+", cook: "+cook+", cookParams: "+cookParams);
 
     if((w().forms[formId] === null) || (w().forms[formId] === undefined)){                      // Проверяем наличие формы в хранилище форм
-        log.debug("Requested requested content for form with contentId="+formId);
+        log.func.debug6("core.addHTMLForm: Requested content for form with contentId: "+contentId);
 
         let srcHtml = getContent("core/html/requestName");
 
         if(srcHtml === null){
-            log.error("Can't get source HTML for contentId="+contentId+" for form with formId="+formId);
+            log.func.error("core.addHTMLForm: Can't get source HTML for contentId="+contentId+" for form with formId="+formId);
             return null;
         }
 
@@ -437,14 +490,16 @@ function addHTMLForm(contentId, formId, resizeParams=[], cook=null, cookParams=[
             refreshForms(formId);
         }
     }else{
-        log.debug("Form "+formId+" already exists");
+        log.debug("core.addHTMLForm: Form "+formId+" already exists");
     }
 
+    log.func.debug6("core.addHTMLForm: return: ", w().forms[formId]);
     return w().forms[formId];
 }
 
 // Получить элемент HTML-формы по номеру (по умолчанию нулевой (стандартно там находится собранная форма))
 function getFormElement(formId, number=0){
+    log.func.debug8("core.getFormElement: formId: "+formId+", number: "+number);
 
     if(w().forms[formId] !== null){
         return w().forms[formId].element[number];
@@ -456,6 +511,7 @@ function getFormElement(formId, number=0){
 // Получить HTML-элемент HTML-формы по id (сначала идёт поиск в нулевом элементе (обычно добавлен в body), затем по остальным элементам формы (обычно в body не добавлены))
 // Идентификатор передаётся без идентификатора формы (добавляется автоматически)
 function getInFormHTMLElement(form, elementId){
+    log.func.debug8("core.getInFormHTMLElement: elementId: "+elementId+", form: ", form);
 
     let el;
     if(elementId === null){
@@ -479,6 +535,7 @@ function getInFormHTMLElement(form, elementId){
 
 // Удалить форму из документа и хранилища (или где есть)
 function delHTMLForm(formId){
+    log.func.debug("core.delHTMLForm: formId: "+formId);
 
     let el = d(formId);
 
@@ -493,6 +550,7 @@ function delHTMLForm(formId){
 
 // Удалить форму ТОЛЬКО из документа
 function removeHTMLForm(formId){
+    log.func.debug("core.removeHTMLForm: formId: "+formId);
 
     let el = d(formId);
 
@@ -503,13 +561,13 @@ function removeHTMLForm(formId){
 
 // Задать дефолтовую функцию автосайзинга HTML-форме
 function setHTMLFormAutoSize(formId, width=null, height=null){
+    log.func.debug7("core.setHTMLFormAutoSize: formId: "+formId+", width: "+width+", height: "+height);
     // Здесь будем создавать лямбду для onResize формы, которая будет размещать форму по центру экрана и задавать ей размеры в соответствии с указанными процентами...
 }
 
-// Обработка события изменения размера рабочей области для элемента body
-function bodyResize(){
-//    log.debug("On body resize");
-}
+
+
+
 
 
 
@@ -517,6 +575,8 @@ function bodyResize(){
 
 // Штатная отправка сообщений серверу. to - адрес получателя, action - действие (обязательное поле), msg - объект с прикладными полями сообщения
 function sendMsg(to, action, msg={}){
+    log.msg.debug7("core.sendMsg: Send to "+address+", msg: ", msg);
+
     if(w().user.connected){
         msg["from"]     = w().user.clientAddress            // Адрес отправителя
         msg["action"]   = action;                           // Действие
@@ -525,8 +585,7 @@ function sendMsg(to, action, msg={}){
 
         return true;
     }else{
-        log.error("No active connection for send message to address "+w().user.clientAddress);
-        log.error(msg);
+        log.func.error("core.sendMsg: No active connection for send message to address "+w().user.clientAddress+", msg: ", msg);
     }
 
     return false;
@@ -536,14 +595,12 @@ function sendMsg(to, action, msg={}){
 // Обработка входящих сообщений
 function onMessage(err, msg){
 
-    log.func.debug6("Callbak on message");
+    log.func.debug7("core.onMessage: err: "+err+", msg: ", msg);
 //    log.debug8("В переменной event здесь есть полное событие (log.debug(event))");
 
     if(err !== null){
-        log.error(err)
+        log.func.error("core.onMessage: err: "+err);
     }
-
-    log.msg.debug7("Received message", msg);
 
     // body в сообщении может и не быть
     let body = null;
@@ -552,7 +609,7 @@ function onMessage(err, msg){
         try{
             body = JSON.parse(msg.body);
         }catch{
-            log.error("Error parsing body JSON");
+            log.func.error("core.onMessage: Error parsing body JSON: msg.body: "+msg.body);
             return;
         }
     }else{return;}
@@ -561,11 +618,12 @@ function onMessage(err, msg){
 
     if(msg.address === "general"){
         if((w().user.status === "preRegistration") && (body.action === "newClientSession")){       // Если это подтверждение регистрации на сервере
-            log.debug("Successfully registered on general channel");
+            log.info("Successfully registered on general channel");
 
             w().user.usid = body.usid;
             w().user.clientAddress = body.address;
             w().user.status = "registration";
+            log.data.debug("Set user.status: "+w().user.status);
 
             setCookie("user.usid", w().user.usid, 1);                                               // Сохраняем в куках идентификатор сессии
             setCookie("user.clientAddress", w().user.clientAddress, 1);                             // Сохраняем в куках адрес сессии
@@ -575,28 +633,27 @@ function onMessage(err, msg){
                                                                                                     // И регистрируемся по адресу клиентской сессии
             w().ueb.registerHandler(w().user.clientAddress, {"action":"registration","usid":w().user.usid,"clid":w().user.clid,"address":w().user.clientAddress}, onMessage);
         }else{
-            log.error("Unexpected message in channel general");
-            log.error(msg);
+            log.func.error("core.onMessage: Unexpected message in channel general: msg: ", msg);
             return;
         }
     }else if(msg.address === w().user.clientAddress){                                               // Обработка сообщений на персональный адрес клиента
         if(body.action === "error"){
-            log.error("from "+body.from+": "+body.text);                                            // Обработка ошибки со стороны сервера
+            log.error("Received ERROR from "+body.from+": "+body.text);                             // Обработка ошибки со стороны сервера
             return;
         }else if((w().user.status === "registration") && (body.action === "serverConfirm")){        // Если это подтверждение регистрации по клиентскому адресу
-            log.debug("Session confirmed from server");
+            log.info("Session "+w().user.usid+"confirmed from server");
 
-            w().user.status = "ready";                                                               // Выставляем статус готовности клиентской сессии
+            w().user.status = "ready";                                                              // Выставляем статус готовности клиентской сессии
+            log.data.debug("Set user.status: "+w().user.status);
 
-            if(loadScript("core/js/contentManager")){                                                // Синхронно подгружаем скрипт базового контентного модуля
+            if(loadScript("core/js/contentManager")){                                               // Синхронно подгружаем скрипт базового контентного модуля
                 log.debug("Main content module loaded");
             }else{
                 log.error("Error loading main content module");
             }
         }
     }else{
-        log.error("Unexpected message in channel "+msg.address);
-        log.error(msg);
+        log.func.error("core.onMessage: Unexpected message in channel "+msg.address+", msg: ", msg);
         return;
     }
 }
