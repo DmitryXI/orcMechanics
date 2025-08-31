@@ -265,7 +265,9 @@ public class Core extends AbstractVerticle {
         }
 
         switch (action){
-            case "zzz":
+            case "setPlayerName":
+                ses.put("playerName", (String) (msg.get("name")));
+                sendClientMessage(from, "setPlayerName", new JSONObject().put("name", (String) ses.get("playerName")));
                 break;
             default:
                 log.error("Core::onClientMessage: unknown action "+action+" from client="+uid+", address="+from);

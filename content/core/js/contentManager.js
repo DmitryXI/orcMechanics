@@ -7,13 +7,12 @@ log.debug("Core content manager loaded");
 //addHTMLForm("core/html/requestName", "core_requestName");
 let reqNameFrm = addHTMLForm("core/html/requestName", "core_requestName", [], core_requestName_cooker, ["core_requestName", "text...."]);
 reqNameFrm.getHTMLElement("entrance").addEventListener('click', () => {
-    log.info("Поехали!!!!");
     reqNameFrm.getHTMLElement("entrance").disabled = true;
     sendMsg("core", "setPlayerName", {"name":reqNameFrm.getHTMLElement("login").value});
     sendMsg("core", "getGamesList");
-//    removeHTMLForm(reqNameFrm.id);
 });
 
+core_showRequestNameForm();
 
 
 
@@ -28,14 +27,35 @@ reqNameFrm.getHTMLElement("entrance").addEventListener('click', () => {
 //log.debug(f("core_requestName").getFormElement(1));
 //loginBtn.addEventListener('click', () => {getFromUrl("POST", window.CPJ.basePath, false, showSelectGameForm, null, null, {"action":answer.for,"usessid":window.CPJ.usessid,"login":$("#etrFrm_login").value}, {"cache-control":"no-cache, no-store, must-revalidate","pragma":"no-cache","expires":"0"}, "body:"+formId, true)});
 //window.CPJ.activeForms[formId] = {"function":"showEntranceForm", "params":["refresh"]}
-
-core_showRequestNameForm();
 //delHTMLForm("core_requestName");
+//    removeHTMLForm(reqNameFrm.id);
+
+
+
+
+
+// Обработчик сообщений от клиента
+function core_onMessage(msg){
+    log.func.debug6("core.core_onMessage: msg: ", msg);
+
+    log.debug("Приняли сообщение: ",msg);
+
+            switch(msg.action) {
+              case "setPlayerName":
+                    w().user.name = msg.name;
+                break;
+              default:
+                log.error("Unknown action: "+msg.action);
+                return;
+                break;
+            }
+}
 
 
 
 // Отображение формы входа
 function core_showRequestNameForm(parentId=null){
+    log.func.debug6("core.core_showRequestNameForm: parentId: "+parentId);
 
     if(parentId === null){
         parentId = "body";
@@ -45,22 +65,19 @@ function core_showRequestNameForm(parentId=null){
 
     if(!(parent instanceof HTMLElement)){
         log.error("Can't get parent element with id "+parentId);
+        return;
     }
 
     if(d("core_requestName", parent) === null){
-//        core_requestName_onResize();
+        core_requestName_onResize(f("core_requestName",0));
         parent.appendChild(getFormElement("core_requestName"));
     }else{
-//        core_requestName_onResize();
+        core_requestName_onResize(f("core_requestName",0));
     }
 }
 
 function core_requestName_cooker(srcHtml, formId, anyText){
-
-//    log.debug("core_requestName_cooker called");
-//    log.debug("source HTML: "+srcHtml);
-//    log.debug("formId: "+formId);
-//    log.debug("anyText: "+anyText);
+    log.func.debug6("core.core_requestName_cooker: srcHtml: "+srcHtml+", formId: "+formId);
 
     let html = srcHtml.replaceAll("${id}", formId).replaceAll("${z}", 1);
     let elements = getElementsFromHTML(html);
@@ -70,11 +87,9 @@ function core_requestName_cooker(srcHtml, formId, anyText){
 }
 
 function core_requestName_onResize(form){
+    log.func.debug6("core.core_requestName_onResize: form: ", form);
 
     let formId = form.id;
-//    log.debug("core_requestName_onResize called");
-//    log.debug(form);
-//    log.debug("formId = "+formId);
 
     let screen = getWorkSize();
     let w = Math.trunc(screen.width/3)
@@ -99,9 +114,6 @@ function core_requestName_onResize(form){
     loginBtn.style.fontSize = Math.trunc(h/6)+"px"
 }
 
-
-//w().ueb.send("core", JSON.stringify({"address":w().user.address,"from":"hez","action":"dumpForTest","usid":w().user.usid}));
-//sendMsg("core", "mainSend!", {"obj":"body"});
 
 
 

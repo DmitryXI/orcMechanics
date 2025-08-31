@@ -575,7 +575,7 @@ function setHTMLFormAutoSize(formId, width=null, height=null){
 
 // Штатная отправка сообщений серверу. to - адрес получателя, action - действие (обязательное поле), msg - объект с прикладными полями сообщения
 function sendMsg(to, action, msg={}){
-    log.msg.debug7("core.sendMsg: Send to "+address+", msg: ", msg);
+    log.func.debug7("core.sendMsg: Send to "+to+", msg: ", msg);
 
     if(w().user.connected){
         msg["from"]     = w().user.clientAddress            // Адрес отправителя
@@ -596,6 +596,7 @@ function sendMsg(to, action, msg={}){
 function onMessage(err, msg){
 
     log.func.debug7("core.onMessage: err: "+err+", msg: ", msg);
+    log.msg.debug7("Received message: ", msg);
 //    log.debug8("В переменной event здесь есть полное событие (log.debug(event))");
 
     if(err !== null){
@@ -637,6 +638,14 @@ function onMessage(err, msg){
             return;
         }
     }else if(msg.address === w().user.clientAddress){                                               // Обработка сообщений на персональный адрес клиента
+        if(body.from === undefined){                                                              // Поле body.from должно быть обязательно
+            log.error("Received wrong body (without from)");
+            return;
+        }
+        if(body.action === undefined){                                                              // Поле body.action должно быть обязательно
+            log.error("Received wrong body (without action) from "+body.from);
+            return;
+        }
         if(body.action === "error"){
             log.error("Received ERROR from "+body.from+": "+body.text);                             // Обработка ошибки со стороны сервера
             return;
@@ -651,6 +660,11 @@ function onMessage(err, msg){
             }else{
                 log.error("Error loading main content module");
             }
+        }else if(w().user.status == "ready"){                                                       // Если статус сессии ready - обработка основного взаимодействия
+            core_onMessage(body);                                                                    // Передаём тело сообщения на обработку менеджеру
+        }else{
+            log.func.error("core.onMessage: Unexpected action: "+body.action+" in clien status: "+w().user.status);
+            return;
         }
     }else{
         log.func.error("core.onMessage: Unexpected message in channel "+msg.address+", msg: ", msg);
