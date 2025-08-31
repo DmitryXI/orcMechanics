@@ -3,7 +3,7 @@
 // Глобальное хранилище переменных на уровне окна/вкладки
 window.vars = {
     "logLevel" : 8,              // Уровень журналирования в консоль
-    "tagList"  : [],             // Список тэгов для отображения по слоям
+    "tagList"  : [null],         // Список тэгов для отображения по слоям
     "logger"   : new Logger(),   // Глобальный логер
     "user"     : null,           // Информация о текущем пользователе
     "game"     : null,           // Идентификатор сессии пользователя
@@ -16,6 +16,12 @@ window.vars = {
 };
 
 var log = w().logger;
+log.addTag("msg");              // Добавляем тэг для фильтрации журналов сообщений
+log.addTag("form");             // Добавляем тэг для фильтрации журналов работы с формами
+log.addTag("func");             // Добавляем тэг для фильтрации обращения к функциям
+
+
+
 
 // Данные клиентской сессии
 w().user = {
@@ -79,8 +85,7 @@ function docReady(){
         log.info("Connected to server");
         w().ueb.send = function(address, message, headers, callback) {
             if(w().user.connected){
-                log.debug8("Send to "+address+":");
-                log.debug8(JSON.parse(message));
+                log.msg.debug7("Send to "+address, JSON.parse(message));
                 return EventBus.prototype.send.call(this, address, message, headers, callback);
             }else{
                 log.error("No active connection for send message to address "+address);

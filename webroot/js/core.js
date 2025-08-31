@@ -87,45 +87,93 @@ function getWorkSize() {
     return { width : e[ a+'Width' ] , height : e[ a+'Height' ] };
 }
 
-// Сохранение/отображение/отправка отладочных сообщений
-function Logger() {
-    this.fatal  = function (message) { this.log(message, 1); },
-    this.error  = function (message) { this.log(message, 2); },
-    this.warn   = function (message) { this.log(message, 3); },
-    this.info   = function (message) { this.log(message, 4); },
-    this.debug  = function (message) { this.log(message, 5); },
-    this.debug6 = function (message) { this.log(message, 6); },
-    this.debug7 = function (message) { this.log(message, 7); },
-    this.debug8 = function (message) { this.log(message, 8); },
 
-    this.log = function (message, importance){
+
+
+// Сохранение/отображение/отправка отладочных сообщений
+function Logger(printStack=false) {
+    this.printStack = printStack;
+    this.tagList = [];
+
+    this.fatal   = function (message, obj=null) { this.log(message, obj, 1); },
+    this.error   = function (message, obj=null) { this.log(message, obj, 2); },
+    this.warn    = function (message, obj=null) { this.log(message, obj, 3); },
+    this.info    = function (message, obj=null) { this.log(message, obj, 4); },
+    this.debug   = function (message, obj=null) { this.log(message, obj, 5); },
+    this.debug6  = function (message, obj=null) { this.log(message, obj, 6); },
+    this.debug7  = function (message, obj=null) { this.log(message, obj, 7); },
+    this.debug8  = function (message, obj=null) { this.log(message, obj, 8); },
+
+    // Добавление тэга к в логер
+    this.addTag = function (tag){
+        if(typeof tag === "string"){
+            let uTag = tag.toUpperCase();
+            let lTag = tag.toLowerCase();
+            if(!this.tagList.includes(uTag)){
+                this.tagList.push(uTag);
+                this[lTag] = {
+                    "fatal"  : function (message, obj=null) { this.logger.log(message, obj, 1, uTag); },
+                    "error"  : function (message, obj=null) { this.logger.log(message, obj, 2, uTag); },
+                    "warn"   : function (message, obj=null) { this.logger.log(message, obj, 3, uTag); },
+                    "info"   : function (message, obj=null) { this.logger.log(message, obj, 4, uTag); },
+                    "debug"  : function (message, obj=null) { this.logger.log(message, obj, 5, uTag); },
+                    "debug6" : function (message, obj=null) { this.logger.log(message, obj, 6, uTag); },
+                    "debug7" : function (message, obj=null) { this.logger.log(message, obj, 7, uTag); },
+                    "debug8" : function (message, obj=null) { this.logger.log(message, obj, 8, uTag); },
+                };
+                this[lTag].logger = this;
+            }
+        }
+    }
+
+    // Разбор стэка вызова
+    function getCaller(stack){
+        let startPos = stack.indexOf("\n", 0)+1;
+        let stopPos = stack.indexOf('@', startPos);
+        if(stopPos == startPos){
+            return ""
+        }else{
+            return stack.substring(startPos, stopPos);
+        }
+    }
+
+    // Приём и обработка логов
+    this.log = function (message, obj=null, importance, tag=null){
         importance = Number(importance)
 
-        if(((w().logList.length == 0) && (importance > 0) && (importance <= w().logLevel)) || (w().logList.includes(importance))){
+        if(this.tagList.includes(tag)){
+            tag += " ";
+        }else{ tag = ""; }
+
+        if((importance > 0) && (importance <= w().logLevel)){
             let importanceText;
 
             switch(importance) {
               case 1:
-                importanceText = "FATAL";
+                importanceText = tag+"FATAL";
+                if(this.printStack){ console.log(new Error().stack); }
                 break;
               case 2:
-                importanceText = "ERROR";
+                importanceText = tag+"ERROR";
+                if(this.printStack){ console.log(new Error().stack); }
                 break;
               case 3:
-                importanceText = "WARN";
+                importanceText = tag+"WARN";
                 break;
               case 4:
-                importanceText = "INFO";
+                importanceText = tag+"INFO";
                 break;
               default:
-                importanceText = "DEBUG "+importance;
+                importanceText = tag+"DEBUG "+importance;
                 break;
             }
 
-            console.log(importanceText+": "+message);
-
-            if(typeof message === "object"){
-                console.log(message);
+            if(obj !== null){
+                console.log([importanceText+": "+message+": "+JSON.stringify(obj), obj]);
+            }else if(typeof message === "object"){
+                console.log([importanceText+": "+JSON.stringify(message), message]);
+            }else{
+                console.log(importanceText+": "+message);
             }
         }
     }
@@ -488,14 +536,14 @@ function sendMsg(to, action, msg={}){
 // Обработка входящих сообщений
 function onMessage(err, msg){
 
-    log.debug6("Callbak on message");
-    log.debug7("В переменной event здесь есть полное событие (log.debug(event))");
+    log.func.debug6("Callbak on message");
+//    log.debug8("В переменной event здесь есть полное событие (log.debug(event))");
 
     if(err !== null){
         log.error(err)
     }
 
-    log.debug7(msg);
+    log.msg.debug7("Received message", msg);
 
     // body в сообщении может и не быть
     let body = null;
