@@ -26,9 +26,9 @@ function core_onMessage(msg){
                 log.data.debug("Set user.name: "+w().user.name);
                 break;
               case "setGamesList":
-                 w().user.gameList = msg.list;
-                 log.data.debug("Set user.gameList: ", w().user.gameList);
-                 log.debug("Received list of games: ", w().user.gameList);
+                 w().user.gamesList = msg.list;
+                 log.data.debug("Set user.gamesList: ", w().user.gamesList);
+                 log.debug("Received list of games: ", w().user.gamesList);
                  if(w().user.stage = "entrance"){                               // Если это на этапе entrance, то удаляем форму входа и подгружаем форму выбора игры
                     w().user.stage = "selectGame";
                     log.data.debug("Set user.stage: "+w().user.stage);

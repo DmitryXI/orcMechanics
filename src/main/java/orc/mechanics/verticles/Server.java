@@ -21,6 +21,8 @@ import org.json.JSONObject;
 import java.io.File;
 import java.util.HashMap;
 
+import static java.lang.System.in;
+
 
 // Главный вертикл: держатель веб-сервера
 // Адреса на шине данных: registration, server
@@ -64,7 +66,11 @@ public class Server extends AbstractVerticle {
         contentRouter.post().handler(this::onRequestContent);                                            // Цепляем обработчик к хэндлеру роутера для закрытого контента
 
         addEbPermit("general");                                                                   // Добавляем разрешение для приёма сообщений через веб-сокет на общий адрес веб-сервера
-        addEbPermit("core");                                                                      // Добавляем разрешение для приёма сообщений через веб-сокет на общий адрес ядра
+
+        for (String verAddress : verticlesAddresses.keySet()){                                            // Добавляем разрешения для адресов вертиклов на шине
+            addEbPermit(verAddress);
+            System.out.println("Added permit to address: "+verAddress);
+        }
 
         // Запускаем веб-сервер
         vertx.createHttpServer().requestHandler(router).listen(ServerHttpPort).onComplete(http -> {

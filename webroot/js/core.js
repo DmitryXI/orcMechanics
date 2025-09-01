@@ -242,9 +242,7 @@ function refreshForms(formId=null){
 
     if(formId !== null){
         if(window[w().forms[formId].onResize] instanceof Function){
-            let params = w().forms[formId].onResizeParams;
-            params.unshift(w().forms[formId].element[0]);
-            window[w().forms[formId].onResize](...w().forms[formId].onResizeParams);
+            window[w().forms[formId].onResize](w().forms[formId].element[0], ...w().forms[formId].onResizeParams);
         }
 
         return;
@@ -253,9 +251,7 @@ function refreshForms(formId=null){
     for(formId in w().forms){
         if(window[w().forms[formId].onResize] instanceof Function){
             log.form.debug8("Resizing form formId: "+formId);
-            let params = w().forms[formId].onResizeParams;
-            params.unshift(w().forms[formId].element[0]);
-            window[w().forms[formId].onResize](...w().forms[formId].onResizeParams);
+            window[w().forms[formId].onResize](w().forms[formId].element[0], ...w().forms[formId].onResizeParams);
         }
     }
 }
@@ -455,7 +451,7 @@ function addHTMLForm(contentId, formId, resizeParams=[], cook=null, cookParams=[
     if((w().forms[formId] === null) || (w().forms[formId] === undefined)){                      // Проверяем наличие формы в хранилище форм
         log.func.debug6("core.addHTMLForm: Requested content for form with contentId: "+contentId);
 
-        let srcHtml = getContent("core/html/requestName");
+        let srcHtml = getContent(contentId);
 
         if(srcHtml === null){
             log.func.error("core.addHTMLForm: Can't get source HTML for contentId="+contentId+" for form with formId="+formId);
@@ -465,7 +461,7 @@ function addHTMLForm(contentId, formId, resizeParams=[], cook=null, cookParams=[
         let elements;
 
         if(cook !== null){                                                                      // Если передан обработчик сырого контента, то он должен вернуть элементы формы
-            cookParams.unshift(srcHtml);                                                        // Добавляем первым параметром в списке исходный HTML
+            cookParams.unshift(srcHtml, formId);                                                // Добавляем первым параметром в списке исходный HTML
             elements = cook(...cookParams);
         }else{                                                                                  // Если спец.обработчик не задан, создаём элементы стандартным образом
             let html = srcHtml.replaceAll("${id}", formId).replaceAll("${z}", 1);
@@ -486,6 +482,10 @@ function addHTMLForm(contentId, formId, resizeParams=[], cook=null, cookParams=[
         let resizeFuncName = formId+"_onResize";
         if(window[resizeFuncName] instanceof Function){
             w().forms[formId].onResize       = resizeFuncName;
+            w().forms[formId].onResizeParams = resizeParams;
+            refreshForms(formId);
+        }else{
+            w().forms[formId].onResize       = "HTMLForm_onResize";
             w().forms[formId].onResizeParams = resizeParams;
             refreshForms(formId);
         }
@@ -509,7 +509,7 @@ function getFormElement(formId, number=0){
 }
 
 // Получить HTML-элемент HTML-формы по id (сначала идёт поиск в нулевом элементе (обычно добавлен в body), затем по остальным элементам формы (обычно в body не добавлены))
-// Идентификатор передаётся без идентификатора формы (добавляется автоматически)
+// Идентификатор передаётся без идентификатора формы и последующего подчёркивания (добавляется автоматически)
 function getInFormHTMLElement(form, elementId){
     log.func.debug8("core.getInFormHTMLElement: elementId: "+elementId+", form: ", form);
 
@@ -559,11 +559,33 @@ function removeHTMLForm(formId){
     }
 }
 
-// Задать дефолтовую функцию автосайзинга HTML-форме
-function setHTMLFormAutoSize(formId, width=null, height=null){
-    log.func.debug7("core.setHTMLFormAutoSize: formId: "+formId+", width: "+width+", height: "+height);
-    // Здесь будем создавать лямбду для onResize формы, которая будет размещать форму по центру экрана и задавать ей размеры в соответствии с указанными процентами...
+// Обработчик по умолчания window.onResize для HTML-форм
+// widthPerc = ширина в процентах от рабочей области, heightPerc - высота в процентах от рабочей области
+function HTMLForm_onResize(form, widthPerc=null, heightPerc=null){
+    log.func.debug7("core.HTMLForm_onResize: , widthPerc: "+widthPerc+", heightPerc: "+heightPerc+", form: ", form);
+
+    if(widthPerc === null){
+        widthPerc = 50;
+    }
+
+    if(heightPerc === null){
+        heightPerc = 50;
+    }
+
+    let formId = form.id;
+    let screen = getWorkSize();
+
+    let width = Math.trunc(screen.width * (widthPerc/100));
+    let height = Math.trunc(screen.height * (heightPerc/100));
+
+    form.style.left   = Math.trunc((screen.width-width)/2)+"px";
+    form.style.top    = Math.trunc((screen.height-height)/2)+"px";
+    form.style.width  = width+"px";
+    form.style.height = height+"px";
+//    log.debug("width: "+width+", height: "+height+", left: "+form.style.left+", top: "+form.style.top+", swidth: "+screen.width+", screen.height: "+screen.height);
 }
+
+
 
 
 
