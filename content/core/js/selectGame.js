@@ -17,7 +17,7 @@ function selectGame_main(){
         item.id += gameName;
         item.innerHTML = w().user.gamesList[gameName];
         item.addEventListener('click', () => {
-                     sendMsg(gameName, "getEntranceForm");
+                     sendMsg("core", "getGameEntrance", {"game":gameName});
         });
         selGameFrm.getHTMLElement().appendChild(item);
     }

@@ -1,5 +1,6 @@
 package orc.mechanics.games;
 
+import com.google.gson.Gson;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.eventbus.EventBus;
@@ -10,7 +11,6 @@ import io.vertx.core.shareddata.LocalMap;
 import orc.mechanics.GameSessionsManager;
 import orc.mechanics.verticles.Core;
 import org.json.JSONObject;
-
 import java.util.HashMap;
 
 
@@ -65,36 +65,90 @@ public class TicTacToe extends AbstractVerticle {
     // Обработка входящих сообщений
     public void onMessage(Message<Object> ebMsg){
 
-////        System.out.println("Core received local message: "+ebMsg.body());
-//
-//        HashMap<String, Object> msg;
-//        String                  from;
-//
-//        try {
-//            msg = new Gson().fromJson(ebMsg.body().toString(), HashMap.class);
-//        }catch (Exception e){
-//            log.error("Core::onLocalMessage: received wrong JSON-string ("+ebMsg.body().toString()+")");
-//            return;
-//        }
-//
-//        from = (String) msg.get("from");            // From сразу выносим в string
-//
-//        if (from == null){
-//            log.error("Core::onLocalMessage: no from field in body ("+ebMsg.body().toString()+")");
-//            return;
-//        }
-////        if ((from == null) || !verticlesAddresses.containsKey(from)) {
-////            log.error("Core::onLocalMessage: not registered address: "+msg.get("from"));
-////            return;
-////        }
-//
-//        if (from.equals("server")) {
-//            onServerMessage(msg);
-//        } else if ((from.length() == 14) && (from.substring(0,2).equals("cl"))) {
-//            onClientMessage(msg);
-//        } else {
-//            log.error("Core::onLocalMessage: Unexpected sender: "+from);
-//            return;
-//        }
+        System.out.println(localAddress+" received local message: "+ebMsg.body());
+
+        HashMap<String, Object> msg;
+
+        try {
+            msg = new Gson().fromJson(ebMsg.body().toString(), HashMap.class);
+        }catch (Exception e){
+            log.error(localAddress+"::onLocalMessage: received wrong JSON-string ("+ebMsg.body().toString()+")");
+            return;
+        }
+
+        String from   = (String) msg.get("from");
+        String action = (String) msg.get("action");
+
+        if (from == null){
+            log.error(localAddress+"::onClientMessage: no from field in body ("+msg.toString()+")");
+            return;
+        }
+        if (action == null){
+            log.error(localAddress+"::onClientMessage: no action field in body ("+msg.toString()+")");
+            sendClientMessage(from, "error", new JSONObject().put("text","no action field in body"));
+            return;
+        }
+
+        if (from.equals("server")) {
+            onServerMessage(msg);
+        } else if (from.equals("core")) {
+            onCoreMessage(msg);
+        } else if ((from.length() == 14) && (from.substring(0,2).equals("gm"))) {
+            onClientMessage(msg);
+        } else {
+            log.error(localAddress+"::onLocalMessage: Unexpected sender: "+from);
+            return;
+        }
+    }
+
+    // Обработка внутренних сообщений от Server
+    public void onServerMessage(HashMap<String, Object> msg){
+
+        System.out.println(localAddress+"::onServerMessage: Received message from game: "+msg.toString());
+    }
+
+    // Обработка внутренних сообщений от Server
+    public void onCoreMessage(HashMap<String, Object> msg){
+
+        System.out.println(localAddress+"::onCoreMessage: Received message from game: "+msg.toString());
+
+        String from   = (String) msg.get("from");
+        String action = (String) msg.get("action");
+        String uid    = (String) msg.get("usid");
+
+        if (uid == null){
+            log.error(localAddress+"::onClientMessage: no usid field in body ("+msg.toString()+")");
+            sendClientMessage(from, "error", new JSONObject().put("text","no usid field in body"));
+            return;
+        }
+
+
+        switch (action){
+            case "getGameEntrance":
+//                ses.put("zzzz", (String) (msg.get("name")));
+//                sendClientMessage(from, "setPlayerName", new JSONObject().put("name", (String) ses.get("playerName")));
+                // Подготовить форму со список игровых сессий и созданием новой игры (наверно, лучше разделить на левый и правы блок...)
+                // или сделать кнопку переключения на уровне клиента
+                // И написать обработку всего этого....
+                break;
+            default:
+                log.error(localAddress+"::onClientMessage: unknown action "+action+" from client="+uid+", address="+from);
+                sendClientMessage(from,"error", new JSONObject().put("text","unknown action "+action));
+        }
+    }
+
+    // Обработка сообщений от клиентов в рамках игровых сессий
+    public void onClientMessage(HashMap<String, Object> msg){
+
+        System.out.println(localAddress+"onClientMessage: Received message from game: "+msg.toString());
+    }
+
+    // Отправление шаблонного сообщения клиенту
+    public void sendClientMessage(String to, String action,JSONObject msg){
+        msg.put("from", localAddress);
+        msg.put("action", action);
+        eb.send(to, msg.toString());
+        log.debug(localAddress+"::sendClientMessage: sended message: "+msg.toString());
     }
 }
+

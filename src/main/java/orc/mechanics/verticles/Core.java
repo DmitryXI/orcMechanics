@@ -22,10 +22,10 @@ public class Core extends AbstractVerticle {
     private String                   localAddress           = "core";                                   // Локальный адрес вертикла
     private LocalMap<String, String> verticlesAddresses     = null;                                     // Массив персональных адресов вертиклов на шине данных
     private LocalMap<String, String> gamesList              = null;                                     // Список игр
+    private LocalMap<String, String> clientSessionsList     = null;                                     // Список активных клиентских сессий (для проверки сессии клиента другими вертиклами)
     private EventBus                 eb                     = null;                                     // Шина данных для обмена сообщениями вертиклами между собой и вертиклов с веб-клиентами
     private ClientSessionsManager    clientSessions         = null;                                     // Менеджер сессий клиентов
-//    private HashMap<String, Object>  disabledClientSessions = null;                                     // Хранилище отключенных сессий клиентов
-    private SessionsManager          gameSessions           = null;                                     // Менеджер сессий игр
+//    private SessionsManager          gameSessions           = null;                                     // Менеджер сессий игр
 
 
 
@@ -34,11 +34,12 @@ public class Core extends AbstractVerticle {
         log.info("Core verticle started");
 
         clientSessions      = new ClientSessionsManager();                                              // Менеджер сессий клиентов
-        gameSessions        = new SessionsManager(null);                                     // Менеджер сессий игр
+//        gameSessions        = new SessionsManager(null);                                     // Менеджер сессий игр
 
         eb                  = vertx.eventBus();                                                         // Шина данных для обмена сообщениями вертиклами между собой и вертиклов с веб-клиентами
         verticlesAddresses  = vertx.sharedData().getLocalMap("verticlesAddresses");                  // Подключаем общий массив адресов вертиклов
         gamesList           = vertx.sharedData().getLocalMap("gamesList");                           // Подключаем список игр
+        clientSessionsList  = vertx.sharedData().getLocalMap("clientSessionsList");                  // Подключаем общий список клиентских сессий
 
         verticlesAddresses.put(localAddress, "core");                                                // Регистрируем адрес в общем списке
         eb.localConsumer(localAddress, this::onMessage);                                                // Подписываемся на сообщения от Server
@@ -95,6 +96,8 @@ public class Core extends AbstractVerticle {
 
         if (from.equals("server")) {
             onServerMessage(msg);
+        } else if (gamesList.containsKey(from)) {
+            onGamesMessage(msg);
         } else if ((from.length() == 14) && (from.substring(0,2).equals("cl"))) {
             onClientMessage(msg);
         } else {
@@ -190,6 +193,9 @@ public class Core extends AbstractVerticle {
                 } else { reason = "no clientId in session"; }
 
                 if (ses != null) {
+
+//                    clientSessionsList.put(uid, clientSessions.getStatus(uid));        // Добавляем id и статус клиентской сессии в общедоступный список
+
                     eb.send(address, new JSONObject()
                             .put("from", localAddress)
                             .put("action", "serverConfirm")
@@ -201,6 +207,7 @@ public class Core extends AbstractVerticle {
                     log.error("Core::onServerMessage: Can't confirm session ("+reason+") for "+msg.toString());
                     return;
                 }
+                break;
             case "clientUnregister":                                                 // Снятие регистрации с сессии клиента
 //                System.out.println("Unregister client session");
 
@@ -266,6 +273,10 @@ public class Core extends AbstractVerticle {
             return;
         }
 
+        clientSessions.setActivity(uid);                                    // Обновляем время последней активности клиентской сессии
+
+        JSONObject resp = new JSONObject();
+
         switch (action){
             case "setPlayerName":
                 ses.put("playerName", (String) (msg.get("name")));
@@ -273,21 +284,28 @@ public class Core extends AbstractVerticle {
                 break;
             case "getGamesList":
 //                System.out.println("Список игр: " + new JSONObject(gamesList).toString());
-                JSONObject resp = new JSONObject();
                 resp.put("list", new JSONObject());
                 gamesList.forEach((String gameAdderss, String gameName) -> {
                     resp.getJSONObject("list").put(gameAdderss, gameName);
                 });
                 sendClientMessage(from,"setGamesList", resp);
                 break;
+            case "getGameEntrance":                                         // Запрашиваем форму входа для любой игры транзитом через core для контроля сессий и любого другого контроля
+                resp.put("game", (String) msg.get("game"))
+                    .put("usid", (String) msg.get("usid"))
+                    .put("clientAddress", (String) msg.get("from"));
+                sendClientMessage((String) msg.get("game"),"getGameEntrance", resp);
+                break;
             default:
                 log.error("Core::onClientMessage: unknown action "+action+" from client="+uid+", address="+from);
                 sendClientMessage(from,"error", new JSONObject().put("text","unknown action "+action));
         }
+    }
 
+    // Обработка сообщений от игровых вертиклов
+    public void onGamesMessage(HashMap<String, Object>msg){
 
-
-
+        System.out.println(localAddress+"onGamesMessage: Received message from game: "+msg.toString());
     }
 
     // Отправление шаблонного сообщения клиенту

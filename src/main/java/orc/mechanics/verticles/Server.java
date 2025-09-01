@@ -66,11 +66,12 @@ public class Server extends AbstractVerticle {
         contentRouter.post().handler(this::onRequestContent);                                            // Цепляем обработчик к хэндлеру роутера для закрытого контента
 
         addEbPermit("general");                                                                   // Добавляем разрешение для приёма сообщений через веб-сокет на общий адрес веб-сервера
+        addEbPermit("core");                                                                      // Добавляем разрешение для приёма сообщений через веб-сокет на общий адрес веб-сервера
 
-        for (String verAddress : verticlesAddresses.keySet()){                                            // Добавляем разрешения для адресов вертиклов на шине
-            addEbPermit(verAddress);
-            System.out.println("Added permit to address: "+verAddress);
-        }
+//        for (String verAddress : verticlesAddresses.keySet()){                                            // Добавляем разрешения для адресов вертиклов на шине
+//            addEbPermit(verAddress);
+//            System.out.println("Added permit to address: "+verAddress);
+//        }
 
         // Запускаем веб-сервер
         vertx.createHttpServer().requestHandler(router).listen(ServerHttpPort).onComplete(http -> {
