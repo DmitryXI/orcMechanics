@@ -1,18 +1,58 @@
 <div id="${id}" style="position:relative; z-index:${z}; border:solid black 1px; padding 0px;">
     <style>
-        .${id}_menuItem {
+        #${id}_menuHeader {
+            display: flex;
+            width: 100%;
+            font-size: 20px;
+            background-color: #CCC;
+            text-align: center;
+            padding: 0px;
+            padding-top: 5px;
+            padding-bottom: 5px;
+            cursor: default;
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none; /* Safari */
+            -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Old versions of Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently */
+        }
+        #${id}_back {
+            display: flex;
+            justify-content: flex-start;
+            font-weight: bold;
+            padding-left: 5px;
+            padding-right: 5px;
+            data-hint: "Предыдущее меню";
+        }
+        #${id}_back:hover {
+            cursor: pointer;
+        }
+        .${id}_listItem {
             font-size: 14px;
             font-family: Verdana, Arial, Helvetica, sans-serif;
             color: #333366;
             width: 100%;
             font-size: 14px;
             text-align: center;
+            padding: 2px;
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none; /* Safari */
+            -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Old versions of Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently */
         }
-        .${id}_menuItem:hover {
+        .${id}_listItem:hover {
             cursor: pointer;
             background-color: #EEE;
         }
     </style>
-    <div style="width: 100%; font-size: 20px; background-color: #CCC; text-align: center; padding: 0px; padding-top: 5px; padding-bottom: 5px;"><span id="${id}_user_name"></span>, выберите игру</div>
+    <div id="${id}_menuHeader">
+        <div id="${id}_back">&lt;</div>
+        <div style="display: flex; flex: 1; justify-content: center;"><span id="${id}_user_name"></span><span>, выберите игру</span></div>
+    </div>
+    <div id="${id}_gamesList">
+    </div>
 </div>
-<div id="${id}_item_" class="${id}_menuItem">Some item...</div>
+<div id="${id}_item_" class="${id}_listItem">Some item...</div>

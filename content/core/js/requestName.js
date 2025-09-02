@@ -2,22 +2,31 @@
 
 
 // Вызываем стартовую функцию
-requestName_main();
+//core_requestName_main();
 
 
-function requestName_main(){
-    let reqNameFrm = addHTMLForm("core/html/requestName", "core_requestName", [], core_requestName_cooker, ["core_requestName", "text...."]);
-    reqNameFrm.getHTMLElement("entrance").addEventListener('click', () => {
-        reqNameFrm.getHTMLElement("entrance").disabled = true;
-        sendMsg("core", "setPlayerName", {"name":reqNameFrm.getHTMLElement("login").value});
-        sendMsg("core", "getGamesList");
-    });
+function core_requestName_main(){
 
-    core_showRequestNameForm();         // Отображаем форму в документе
+    let reqNameFrm = null;
+
+    if(f("core_requestName") === null){             // Навешиваем обработчики и пр. только если форма ещё не загружена и не обработана
+        reqNameFrm = addHTMLForm("core/html/requestName", "core_requestName", [], core_requestName_cooker, ["core_requestName", "text...."]);
+        reqNameFrm.getHTMLElement("entrance").addEventListener('click', () => {
+            reqNameFrm.getHTMLElement("entrance").disabled = true;
+            sendMsg("core", "setPlayerName", {"name":reqNameFrm.getHTMLElement("login").value});
+            sendMsg("core", "getGamesList");
+        });
+    }else{                                          // Если форма использовалась раньше, то включаем кнопку и указываем имеющееся имя игрока
+        reqNameFrm = f("core_requestName");
+        reqNameFrm.getHTMLElement("entrance").disabled = false;
+        reqNameFrm.getHTMLElement("login").value = w().user.name;
+    }
+
+    core_requestName_showRequestNameForm();         // Отображаем форму в документе
 }
 
 // Отображение формы входа
-function core_showRequestNameForm(parentId=null){
+function core_requestName_showRequestNameForm(parentId=null){
     log.func.debug6("core.core_showRequestNameForm: parentId: "+parentId);
 
     if(parentId === null){

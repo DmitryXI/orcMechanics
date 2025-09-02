@@ -305,7 +305,7 @@ public class Core extends AbstractVerticle {
     // Обработка сообщений от игровых вертиклов
     public void onGamesMessage(HashMap<String, Object>msg){
 
-        System.out.println(localAddress+"onGamesMessage: Received message from game: "+msg.toString());
+        System.out.println(localAddress+"::onGamesMessage: Received message from game: "+msg.toString());
     }
 
     // Отправление шаблонного сообщения клиенту

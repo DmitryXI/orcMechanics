@@ -397,7 +397,7 @@ function loadScript(contentId, async=false){
     let scriptId = contentId.replaceAll("/", "_");
     let el = d(scriptId);
 
-    if(el === null){
+    if(el === null){                    // Загружаем скрипт только если он не был добавлен раньше
         if(async){              // Асинхронная загрузка скрипта
             return loadContent(contentId, async, scriptId, addScript);
         }else{                  // Синхронная загрузка скрипта
@@ -683,7 +683,7 @@ function onMessage(err, msg){
                 log.error("Error loading main content module");
             }
         }else if(w().user.status == "ready"){                                                       // Если статус сессии ready - обработка основного взаимодействия
-            core_onMessage(body);                                                                    // Передаём тело сообщения на обработку менеджеру
+            core_contentManager_onMessage(body);                                                    // Передаём тело сообщения на обработку менеджеру
         }else{
             log.func.error("core.onMessage: Unexpected action: "+body.action+" in clien status: "+w().user.status);
             return;

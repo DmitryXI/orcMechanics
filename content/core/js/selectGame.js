@@ -1,13 +1,28 @@
 /* Модуль формы выбора игры */
 
+let mainFormId = "core_selectGame";                     // Устанавливаем имя формы глобально в рамках модуля
 
 // Вызываем стартовую функцию
-selectGame_main();
+//core_selectGame_main();
 
 
-function selectGame_main(){
-    let selGameFrm = addHTMLForm("core/html/selectGame", "core_selectGame", [80, 80], core_selectGame_cooker, [w().user.gameList]);
-    selGameFrm.getHTMLElement("user_name").innerHTML = w().user.name;
+function core_selectGame_main(){
+    let selGameFrm = null;
+
+    if(f(mainFormId) === null){             // Навешиваем обработчики и пр. только если форма ещё не загружена и не обработана
+        selGameFrm = addHTMLForm("core/html/selectGame", mainFormId, [80, 80], core_selectGame_cooker, [w().user.gameList]);
+        selGameFrm.getHTMLElement("back").addEventListener('click', () => {             // Устанавливаем обработчик на конпку "Назад"
+            removeHTMLForm(mainFormId);                                                     // Удаляем форму выбора игры
+            w().user.stage = "entrance";                                                // Выставляем текущий этап в entrance, т.к. это ожидаемо значение для входной функции модуля
+            log.data.debug("Set user.stage: "+w().user.stage);
+            core_requestName_main();                                                    // Вызываем входную функцию модуля запроса имени
+        });
+    }else{
+        selGameFrm = f(mainFormId);
+    }
+
+    selGameFrm.getHTMLElement("user_name").innerHTML = w().user.name;                   // Подставляем имя
+    selGameFrm.getHTMLElement("gamesList").innerHTML = "";                              // Чистим список элементов с играми
 
     // Заполняем список игр в форме
     let item;
@@ -19,15 +34,15 @@ function selectGame_main(){
         item.addEventListener('click', () => {
                      sendMsg("core", "getGameEntrance", {"game":gameName});
         });
-        selGameFrm.getHTMLElement().appendChild(item);
+        selGameFrm.getHTMLElement("gamesList").appendChild(item);
     }
 
-    core_showSelectGame();
+    core_selectGame_showSelectGame();
 }
 
 
 // Отображение формы выбора игры
-function core_showSelectGame(parentId=null){
+function core_selectGame_showSelectGame(parentId=null){
     log.func.debug6("core.core_showSelectGame: parentId: "+parentId);
 
     if(parentId === null){
@@ -41,13 +56,12 @@ function core_showSelectGame(parentId=null){
         return;
     }
 
-    let formElement = f("core_selectGame",0);
+    let formElement = f(mainFormId,0);
 
     if(formElement !== null){
         // Для сложных форм здесь не лишним будет вызвать onResize, но в данном случае нет необходимости
-
-        if(d("core_selectGame", parent) === null){
-            parent.appendChild(getFormElement("core_selectGame"));
+        if(d(mainFormId, parent) === null){
+            parent.appendChild(getFormElement(mainFormId));
         }
     }else{
         log.error("Select game form not found");

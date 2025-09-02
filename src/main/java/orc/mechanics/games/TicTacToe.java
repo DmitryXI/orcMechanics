@@ -124,12 +124,14 @@ public class TicTacToe extends AbstractVerticle {
 
 
         switch (action){
-            case "getGameEntrance":
-//                ses.put("zzzz", (String) (msg.get("name")));
-//                sendClientMessage(from, "setPlayerName", new JSONObject().put("name", (String) ses.get("playerName")));
-                // Подготовить форму со список игровых сессий и созданием новой игры (наверно, лучше разделить на левый и правы блок...)
-                // или сделать кнопку переключения на уровне клиента
-                // И написать обработку всего этого....
+            case "getGameEntrance":                                                         // Отвечаем ядру на запрос формы входа
+                sendClientMessage(from, "setGameEntrance", new JSONObject()
+                        .put("sessionsList", getAwaitingSessions())
+                        .put("moduleName","entrance")
+                        .put("resourceId","TicTacToe/js/entrance")
+                        .put("clientAddress", ((String) msg.get("clientAddress")))
+                        .put("usid", ((String) msg.get("usid")))
+                );
                 break;
             default:
                 log.error(localAddress+"::onClientMessage: unknown action "+action+" from client="+uid+", address="+from);
@@ -149,6 +151,22 @@ public class TicTacToe extends AbstractVerticle {
         msg.put("action", action);
         eb.send(to, msg.toString());
         log.debug(localAddress+"::sendClientMessage: sended message: "+msg.toString());
+    }
+
+    // Подготовка списка игровых сессий ожидающих подключение игрока
+    private HashMap<String, Object> getAwaitingSessions(){
+
+        HashMap<String, Object> list = new HashMap<>();
+
+        if (gameSessions.size() > 0) {
+            gameSessions.getSessions().forEach((uid, ses) -> {
+                if ((((HashMap<String, Object>) ses).get("status") != null) && (((String)((HashMap<String, Object>) ses).get("status")).equals("awaiting"))){
+                    list.put(uid, ses);
+                }
+            });
+        }
+
+        return list;
     }
 }
 

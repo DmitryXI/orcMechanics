@@ -2,23 +2,30 @@
 
 log.debug("Core content manager loaded");
 
-// Выставляем текущий этап продвижения к игре
-if(w().user.stage === null){
-    w().user.stage = "entrance";
-    log.data.debug("Set user.stage: "+w().user.stage);
+core_contentManager_main();
 
-    if(loadScript("core/js/requestName")){                                               // Синхронно подгружаем скрипт модуля формы входа
-        log.debug("requestName module loaded");
-    }else{
-        log.error("Error loading requestName module");
+function core_contentManager_main() {
+    log.func.debug6("core.contentManager_main");
+
+    // Выставляем текущий этап продвижения к игре
+    if(w().user.stage === null){
+        w().user.stage = "entrance";
+        log.data.debug("Set user.stage: "+w().user.stage);
+
+        if(loadScript("core/js/requestName")){                                               // Синхронно подгружаем скрипт модуля формы входа
+            log.debug("requestName module loaded");
+            core_requestName_main();                                                         // Вызываем входную функцию модуля
+        }else{
+            log.error("Error loading requestName module");
+        }
     }
 }
 
 // Обработчик сообщений от клиента
-function core_onMessage(msg){
-    log.func.debug6("core.core_onMessage: msg: ", msg);
+function core_contentManager_onMessage(msg){
+    log.func.debug6("core.contentManager_onMessage: msg: ", msg);
 
-    log.debug("Приняли сообщение: ",msg);
+    log.debug("core.contentManager: Received message: ",msg);
 
             switch(msg.action) {
               case "setPlayerName":
@@ -32,9 +39,10 @@ function core_onMessage(msg){
                  if(w().user.stage = "entrance"){                               // Если это на этапе entrance, то удаляем форму входа и подгружаем форму выбора игры
                     w().user.stage = "selectGame";
                     log.data.debug("Set user.stage: "+w().user.stage);
-                    removeHTMLForm("core_requestName");
+                    removeHTMLForm("core_requestName");                         // Удаляем форму ввода имени
                     if(loadScript("core/js/selectGame")){                       // Синхронно подгружаем скрипт модуля формы выбора игры
                         log.debug("selectGame module loaded");
+                        core_selectGame_main();                                 // Вызываем входную функцию модуля
                     }else{
                         log.error("Error loading selectGame module");
                     }

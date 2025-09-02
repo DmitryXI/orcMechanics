@@ -233,4 +233,15 @@ public class SessionsManager {
 
         return doomeds;
     }
+
+    // Получить количество сессий в менеджере
+    public Integer size(){
+        return sessions.size();
+    }
+
+    // Получить ссылка на хранилище сессий
+    public HashMap<String, Object> getSessions() {
+
+        return this.sessions;
+    }
 }
