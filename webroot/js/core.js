@@ -543,8 +543,8 @@ function delHTMLForm(formId){
         el.remove();
     }
 
-    if(w().forms[formId] !== null){
-        w().forms[formId] = null;
+    if(w().forms[formId] !== undefined){
+        delete w().forms[formId];
     }
 }
 
@@ -661,15 +661,15 @@ function onMessage(err, msg){
         }
     }else if(msg.address === w().user.clientAddress){                                               // Обработка сообщений на персональный адрес клиента
         if(body.from === undefined){                                                              // Поле body.from должно быть обязательно
-            log.error("Received wrong body (without from)");
+            log.error("core.onMessage: Received wrong body (without from)");
             return;
         }
         if(body.action === undefined){                                                              // Поле body.action должно быть обязательно
-            log.error("Received wrong body (without action) from "+body.from);
+            log.error("core.onMessage: Received wrong body (without action) from "+body.from);
             return;
         }
         if(body.action === "error"){
-            log.error("Received ERROR from "+body.from+": "+body.text);                             // Обработка ошибки со стороны сервера
+            log.error("core.onMessage: Received ERROR from "+body.from+": "+body.text);                             // Обработка ошибки со стороны сервера
             return;
         }else if((w().user.status === "registration") && (body.action === "serverConfirm")){        // Если это подтверждение регистрации по клиентскому адресу
             log.info("Session "+w().user.usid+" confirmed from server");
@@ -680,7 +680,7 @@ function onMessage(err, msg){
             if(loadScript("core/js/contentManager")){                                               // Синхронно подгружаем скрипт базового контентного модуля
                 log.debug("Main content module loaded");
             }else{
-                log.error("Error loading main content module");
+                log.error("core.onMessage: Error loading main content module");
             }
         }else if(w().user.status == "ready"){                                                       // Если статус сессии ready - обработка основного взаимодействия
             core_contentManager_onMessage(body);                                                    // Передаём тело сообщения на обработку менеджеру

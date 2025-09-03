@@ -1,5 +1,5 @@
 /* Модуль формы выбора игры */
-
+{
 let mainFormId = "core_selectGame";                     // Устанавливаем имя формы глобально в рамках модуля
 
 // Вызываем стартовую функцию
@@ -12,7 +12,7 @@ function core_selectGame_main(){
     if(f(mainFormId) === null){             // Навешиваем обработчики и пр. только если форма ещё не загружена и не обработана
         selGameFrm = addHTMLForm("core/html/selectGame", mainFormId, [80, 80], core_selectGame_cooker, [w().user.gameList]);
         selGameFrm.getHTMLElement("back").addEventListener('click', () => {             // Устанавливаем обработчик на конпку "Назад"
-            removeHTMLForm(mainFormId);                                                     // Удаляем форму выбора игры
+            removeHTMLForm(mainFormId);                                                 // Удаляем форму выбора игры
             w().user.stage = "entrance";                                                // Выставляем текущий этап в entrance, т.к. это ожидаемо значение для входной функции модуля
             log.data.debug("Set user.stage: "+w().user.stage);
             core_requestName_main();                                                    // Вызываем входную функцию модуля запроса имени
@@ -76,4 +76,5 @@ function core_selectGame_cooker(srcHtml, formId, gameList){
     let elements = getElementsFromHTML(html);
 
     return elements;
+}
 }

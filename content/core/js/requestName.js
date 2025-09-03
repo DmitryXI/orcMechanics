@@ -1,5 +1,5 @@
 /* Модуль формы входа */
-
+{
 
 // Вызываем стартовую функцию
 //core_requestName_main();
@@ -105,3 +105,4 @@ function core_requestName_onResize(form){
 //window.CPJ.activeForms[formId] = {"function":"showEntranceForm", "params":["refresh"]}
 //delHTMLForm("core_requestName");
 //    removeHTMLForm(reqNameFrm.id);
+}

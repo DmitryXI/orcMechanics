@@ -296,16 +296,59 @@ public class Core extends AbstractVerticle {
                     .put("clientAddress", (String) msg.get("from"));
                 sendClientMessage((String) msg.get("game"),"getGameEntrance", resp);
                 break;
+            case "createNewGame":                                          // Запрашиваем игровую сессию у игрового вертикла
+                resp.put("game", (String) msg.get("game"))
+                        .put("usid", (String) msg.get("usid"))
+                        .put("clientAddress", (String) msg.get("from"))
+                        .put("params", msg.get("params"));
+                sendClientMessage((String) msg.get("game"),"createNewGame", resp);
+                break;
             default:
                 log.error("Core::onClientMessage: unknown action "+action+" from client="+uid+", address="+from);
                 sendClientMessage(from,"error", new JSONObject().put("text","unknown action "+action));
         }
     }
 
-    // Обработка сообщений от игровых вертиклов
+    // Обработка сообщений от игровых вертиклов (в основном транзит для клиентов)
     public void onGamesMessage(HashMap<String, Object>msg){
 
         System.out.println(localAddress+"::onGamesMessage: Received message from game: "+msg.toString());
+
+        String from   = (String) msg.get("from");
+        String action = (String) msg.get("action");
+
+        if (from == null){
+            log.error("Core::onClientMessage: no from field in body ("+msg.toString()+")");
+            return;
+        }
+        if (action == null){
+            log.error("Core::onClientMessage: no action field in body ("+msg.toString()+")");
+            sendClientMessage(from, "error", new JSONObject().put("text","no action field in body"));
+            return;
+        }
+
+        JSONObject resp = new JSONObject();
+        String clientAddress = null;
+
+        switch (action){
+            case "setGameEntrance":                                         // Отправляем модуль формы входа игры клиенту
+                clientAddress = (String) msg.get("clientAddress");
+                msg.put("from", "core");
+                msg.remove("clientAddress");
+                msg.remove("usid");
+                sendClientMessage(clientAddress,"setGameEntrance", new JSONObject(msg));
+                break;
+            case "setGameSession":                                           // Отправляем игровую сессию клиенту
+                clientAddress = (String) msg.get("clientAddress");
+                msg.put("from", "core");
+                msg.remove("clientAddress");
+                msg.remove("usid");
+                sendClientMessage(clientAddress,"setGameSession", new JSONObject(msg));
+                break;
+            default:
+                log.error("Core::onGamesMessage: unknown action "+action+" from game "+from);
+                sendClientMessage(from,"error", new JSONObject().put("text","unknown action "+action));
+        }
     }
 
     // Отправление шаблонного сообщения клиенту

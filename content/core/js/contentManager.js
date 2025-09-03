@@ -1,5 +1,5 @@
 /* Менеджер контента ядра */
-
+{
 log.debug("Core content manager loaded");
 
 core_contentManager_main();
@@ -16,7 +16,7 @@ function core_contentManager_main() {
             log.debug("requestName module loaded");
             core_requestName_main();                                                         // Вызываем входную функцию модуля
         }else{
-            log.error("Error loading requestName module");
+            log.error("core_contentManager_main: Error loading requestName module");
         }
     }
 }
@@ -25,7 +25,7 @@ function core_contentManager_main() {
 function core_contentManager_onMessage(msg){
     log.func.debug6("core.contentManager_onMessage: msg: ", msg);
 
-    log.debug("core.contentManager: Received message: ",msg);
+    log.debug("core_contentManager_onMessage: Received message: ",msg);
 
             switch(msg.action) {
               case "setPlayerName":
@@ -44,19 +44,41 @@ function core_contentManager_onMessage(msg){
                         log.debug("selectGame module loaded");
                         core_selectGame_main();                                 // Вызываем входную функцию модуля
                     }else{
-                        log.error("Error loading selectGame module");
+                        log.error("core_contentManager_onMessage: Error loading selectGame module");
                     }
                  }
                 break;
+                case "setGameEntrance":
+                    log.data.debug("Received game entrance params: ", msg);
+                    if(msg.resourceId === undefined){ log.error("core_contentManager_onMessage: recourceId not set"); return; }
+                    if(msg.appName === undefined){ log.error("core_contentManager_onMessage: appName not set"); return; }
+                    if(msg.moduleName === undefined){ log.error("core_contentManager_onMessage: moduleName not set"); return; }
+                    if(msg.sessionsList === undefined){ log.error("core_contentManager_onMessage: sessionsList not set"); return; }
+
+                     w().user.gameSessionsList = msg.sessionsList;
+                     log.data.debug("Set user.gameSessionsList: ", w().user.sessionsList);
+                     log.debug("Received list of game sessions: ", w().user.sessionsList);
+
+                    if(w().user.stage = "selectGame"){                             // Если это на этапе entrance, то удаляем форму входа в игру и подгружаем форму выбора игры
+                        w().user.stage = "gameEntrance";
+                        log.data.debug("Set user.stage: "+w().user.stage);
+                        removeHTMLForm("core_selectGame");                         // Удаляем форму ввода имени
+                        if(loadScript(msg.resourceId)){                            // Синхронно подгружаем скрипт модуля формы входа игры
+                            log.debug(msg.moduleName+" module loaded");
+                            let mainFunctionName = msg.appName+"_"+msg.moduleName+"_main";
+                            log.debug("Call "+mainFunctionName);
+                            if(window[mainFunctionName] instanceof Function){       // Вызываем входную функцию
+                                window[mainFunctionName]();
+                            }
+                        }else{
+                            log.error("core_contentManager_onMessage: Error loading selectGame module");
+                        }
+                    }
+                break;
               default:
-                log.error("Unknown action: "+msg.action);
+                log.error("core_contentManager_onMessage: Unknown action: "+msg.action);
                 return;
                 break;
             }
 }
-
-
-
-
-
-
+}

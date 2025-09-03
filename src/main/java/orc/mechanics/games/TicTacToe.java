@@ -127,8 +127,19 @@ public class TicTacToe extends AbstractVerticle {
             case "getGameEntrance":                                                         // Отвечаем ядру на запрос формы входа
                 sendClientMessage(from, "setGameEntrance", new JSONObject()
                         .put("sessionsList", getAwaitingSessions())
+                        .put("appName","TicTacToe")
                         .put("moduleName","entrance")
                         .put("resourceId","TicTacToe/js/entrance")
+                        .put("clientAddress", ((String) msg.get("clientAddress")))
+                        .put("usid", ((String) msg.get("usid")))
+                );
+                break;
+            case "createNewGame":                                                         // Отвечаем ядру на запрос формы входа
+                sendClientMessage(from, "setGameSession", new JSONObject()
+                        .put("text","Not ready yet")
+                        .put("appName","TicTacToe")
+                        .put("moduleName","entrance")
+                        .put("resourceId","TicTacToe/js/battlefield")
                         .put("clientAddress", ((String) msg.get("clientAddress")))
                         .put("usid", ((String) msg.get("usid")))
                 );
