@@ -19,8 +19,21 @@ function TicTacToe_entrance_main(){
             w().user.stage = "createGame";                                              // Выставляем текущий этап
             log.data.debug("Set user.stage: "+w().user.stage);
             selGameFrm.getHTMLElement("create").disabled = true;                        // Блокируем кнопку создания игры до получения ответа
+
+            log.debug("Starting game...");
+            log.debug("Game name: "+selGameFrm.getHTMLElement("gameName").value);
+            log.debug("Players count: "+selGameFrm.getHTMLElement("playersCount").value);
+            log.debug("Field size: "+selGameFrm.getHTMLElement("fieldSizeX").value+"x"+selGameFrm.getHTMLElement("fieldSizeY").value);
+            log.debug("Winline len: "+selGameFrm.getHTMLElement("winLineLen").value);
+            for(let i=0; i < selGameFrm.getHTMLElement("playersCount").value; i++){
+                log.debug(selGameFrm.getHTMLElement("playerName_"+i).innerHTML+"="+selGameFrm.getHTMLElement("playerType_"+i).value);
+            }
+
             sendMsg("core", "createNewGame", {"game":"TicTacToe","params":{}});         // Отправляем запрос на создание игровой сессии с параметрами
         });
+        selGameFrm.getHTMLElement("playersCount").addEventListener('change', function() {    // Устанавливаем обработчик для события change на селект с количеством игроков
+            TicTacToe_entrance_selectMaker(this.value);
+        }, false);
     }else{
         selGameFrm = f(mainFormId);
     }
@@ -48,6 +61,9 @@ function TicTacToe_entrance_showEntrance(parentId=null){
     let formElement = f(mainFormId,0);
 
     if(formElement !== null){
+
+        TicTacToe_entrance_selectMaker(f(mainFormId).getHTMLElement("playersCount").value);         // Собираем блок с типами игроков для выбранного количества
+
         if(d(mainFormId, parent) === null){
             parent.appendChild(getFormElement(mainFormId));
         }
@@ -64,6 +80,41 @@ function TicTacToe_entrance_cooker(srcHtml, formId, gamesList){
     let elements = getElementsFromHTML(html);
 
     return elements;
+}
+
+// Создатель блока выбора типа игроков
+function TicTacToe_entrance_selectMaker(usrCount){
+    log.func.debug6("TicTacToe_entrance_selectMaker: usrCount: "+usrCount);
+
+    let playersTypes = f(mainFormId).getHTMLElement("playersTypes");
+    let playersTypesLine = f(mainFormId, 1);
+    let cPlayersTypesLine;
+
+    if(playersTypes === null) {
+        log.func.error("TicTacToe_entrance_selectMaker: Element playersTypes not found in form "+mainFormId);
+        return;
+    }
+    if(playersTypesLine === null) {
+        log.func.error("TicTacToe_entrance_selectMaker: Element playersTypesLine not found in form "+mainFormId);
+        return;
+    }
+
+    playersTypes.innerHTML = "";
+
+    for(let i = 0; i < usrCount; i++){
+        cPlayersTypesLine = playersTypesLine.cloneNode(true);
+        cPlayersTypesLine.children[0].id += i;
+        cPlayersTypesLine.children[1].id += i;
+
+        if(i == 0){
+            cPlayersTypesLine.children[0].innerHTML = w().user.name;
+        }else{
+            cPlayersTypesLine.children[0].innerHTML = "Игрок "+i;
+        }
+
+        playersTypes.appendChild(cPlayersTypesLine);
+    }
+
 }
 
 }

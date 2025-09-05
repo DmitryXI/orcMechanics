@@ -38,17 +38,50 @@
             }
         #${id}_game_block {
             padding: 5px;
+            width: 50%;
         }
-        #${id}_game_block div:nth-child(1){
+        .${id}_title {
             border: solid 1px;
             padding: 5px;
+            text-align: center;
+            margin-bottom: 5px;
         }
+        .${id}_item {
+            padding: 5px;
+            text-align: left;
+            margin-bottom: 5px;
+        }
+        #${id}_create{
+            border: solid 1px;
+            padding: 5px;
+            text-align: center;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
         #${id}_sessions_block {
             padding: 5px;
+            width: 50%;
         }
         #${id}_sessions_block div:nth-child(1){
             border: solid 1px;
             padding: 5px;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        #${id}_sessions_list {
+            border: solid 1px;
+            padding: 5px;
+            text-align: left;
+            height: 70%;
+            margin-bottom: 5px;
+        }
+        #${id}_join{
+            border: solid 1px;
+            padding: 5px;
+            text-align: center;
+            width: 100%;
+            margin-bottom: 5px;
         }
     </style>
 
@@ -58,15 +91,26 @@
     </div>
     <div id="${id}_main_block">
         <div id="${id}_game_block">
-            <div>Новая игра</div>
-            <div>Параметры игры...</div>
+            <div class="${id}_title">Новая игра</div>
+            <div class="${id}_item">Название игры <input id="${id}_gameName" type="text" value="Новая игра"/></div>
+            <div class="${id}_item">Количество игроков <select id="${id}_playersCount"><option>2</option><option>3</option><option>4</option></select></div>
+            <div id="${id}_playersTypes" class="${id}_item"></div>
+            <div class="${id}_item">Размер игрового поля <input id="${id}_fieldSizeX" type="text" value="4"/>x<input id="${id}_fieldSizeY" type="text" value="4"/></div>
+            <div class="${id}_item">Длина линии победы <input id="${id}_winLineLen" type="text" value="4"/></div>
             <div>
                 <input type="button" id="${id}_create" value="Создать" style="padding: 0px; border: solid 1px; margin: 0px;">
             </div>
         </div>
         <div id="${id}_sessions_block">
             <div>Подключиться к игре</div>
-            <div>Список доступных игр...</div>
+            <div id="${id}_sessions_list">Список доступных игр...</div>
+            <div>
+                <input type="button" id="${id}_join" DISABLED value="Подключиться" style="padding: 0px; border: solid 1px; margin: 0px;">
+            </div>
         </div>
     </div>
+</div>
+<div>
+    <span id="${id}_playerName_"></span>
+    <select id="${id}_playerType_"><option value="player">Игрок</option><option value="ai">ИИ</option></select>
 </div>
