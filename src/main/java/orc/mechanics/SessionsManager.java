@@ -32,6 +32,32 @@ public class SessionsManager {
         addresses           = new HashMap<>();
     }
 
+    // Установить значение произвольного поля
+    public boolean setValue(String uid, String key, Object value){
+
+        HashMap<String, Object> ses = getSession(uid);
+
+        if (ses != null) {
+            ses.put(key, value);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    // Получить значение произвольного поля типа String
+    public String getString(String uid, String key){
+
+        HashMap<String, Object> ses = getSession(uid);
+
+        if (ses != null) {
+            return (String) (ses.get(key));
+        }
+
+        return null;
+    }
+
     // Установить ttl
     public void setTtl(Integer ttl) {
         this.ttl = ttl;
@@ -44,6 +70,9 @@ public class SessionsManager {
 
     // Создать сессию
     public String create(){
+        return (String) create(false);
+    }
+    public Object create(boolean returnObject){
 
         String uid = generateUID(uidChars, uidLen);
         Integer genCount = 0;
@@ -66,7 +95,11 @@ public class SessionsManager {
         setAddress(address, uid);                                   // Добавляем и индексируем адрес шины для сессии
         setActivity(ts, uid);                                       // Устанавливаем время последнего обновления
 
-        return uid;
+        if (returnObject) {
+            return session;
+        }else {
+            return uid;
+        }
     }
 
     // Удалить сессию

@@ -19,6 +19,7 @@ function TicTacToe_entrance_main(){
             w().user.stage = "createGame";                                              // Выставляем текущий этап
             log.data.debug("Set user.stage: "+w().user.stage);
             selGameFrm.getHTMLElement("create").disabled = true;                        // Блокируем кнопку создания игры до получения ответа
+            let players = {};
 
             log.debug("Starting game...");
             log.debug("Game name: "+selGameFrm.getHTMLElement("gameName").value);
@@ -27,9 +28,16 @@ function TicTacToe_entrance_main(){
             log.debug("Winline len: "+selGameFrm.getHTMLElement("winLineLen").value);
             for(let i=0; i < selGameFrm.getHTMLElement("playersCount").value; i++){
                 log.debug(selGameFrm.getHTMLElement("playerName_"+i).innerHTML+"="+selGameFrm.getHTMLElement("playerType_"+i).value);
+                players["playerName_"+i] = selGameFrm.getHTMLElement("playerType_"+i).value;
             }
 
-            sendMsg("core", "createNewGame", {"game":"TicTacToe","params":{}});         // Отправляем запрос на создание игровой сессии с параметрами
+            sendMsg("core", "createNewGame", {"game":"TicTacToe","params":{
+                "gameName":selGameFrm.getHTMLElement("gameName").value,
+                "playersCount":selGameFrm.getHTMLElement("playersCount").value,
+                "fieldSizeX":selGameFrm.getHTMLElement("fieldSizeX").value,
+                "fieldSizeY":selGameFrm.getHTMLElement("fieldSizeY").value,
+                "winLineLen":selGameFrm.getHTMLElement("winLineLen").value,
+                "players":players}});                                                        // Отправляем запрос на создание игровой сессии с параметрами
         });
         selGameFrm.getHTMLElement("playersCount").addEventListener('change', function() {    // Устанавливаем обработчик для события change на селект с количеством игроков
             TicTacToe_entrance_selectMaker(this.value);

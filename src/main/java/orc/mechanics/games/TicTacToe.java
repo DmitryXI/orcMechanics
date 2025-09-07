@@ -135,14 +135,51 @@ public class TicTacToe extends AbstractVerticle {
                 );
                 break;
             case "createNewGame":                                                         // Отвечаем ядру на запрос формы входа
-                sendClientMessage(from, "setGameSession", new JSONObject()
+
+                String gsuid = gameSessions.create();                                     // Создаём игровую сессию
+//                HashMap<String, Object> ses = (HashMap<String, Object>) (gameSessions.create(true));                    // Создаём игровую сессию
+//                String gsuid = (String) (ses.get("uid"));
+
+                if (gsuid == null) {                                                      // Если не удалось создать игровую сессию отправляем на core ошибку
+                    sendClientMessage(from, "error", new JSONObject()
+                            .put("action","error")
+                            .put("text","Can't create new game session")
+                            .put("clientAddress", ((String) msg.get("clientAddress")))
+                            .put("usid", ((String) msg.get("usid")))
+                    );
+
+                    return;
+                }
+
+                // game=TicTacToe,
+                // action=createNewGame,
+                // from=core,
+                // params={fieldSizeX=4,
+                // fieldSizeY=4,
+                // playersCount=2,
+                // gameName=Новая игра,
+                // players={playerName_0=player, playerName_1=player},
+                // winLineLen=4},
+                // clientAddress=clZ0L0GRBRJ2YF,
+                // usid=Z0L0GRBRJ2YF
+
+                HashMap<String, String> players = new HashMap<>();
+
+                gameSessions.setValue(gsuid, "name", msg.get("gameName"));                              // Имя игровой сессии
+                gameSessions.setValue(gsuid, "winLineLen", (Integer) msg.get("winLineLen"));            // Длина линии победы
+                gameSessions.setValue(gsuid, "field", null);                                      // Игровое поле
+                gameSessions.setValue(gsuid, "fieldX", (Integer) msg.get("fieldSizeX"));                // Ширина игрового поля
+                gameSessions.setValue(gsuid, "fieldY", (Integer) msg.get("fieldSizeY"));                // Высота игрового поля
+                gameSessions.setValue(gsuid, "players", players);                                       // Участники игры с текущми статусами и параметрами
+
+
+                sendClientMessage(from, "error", new JSONObject()
+                        .put("action","error")
                         .put("text","Not ready yet")
-                        .put("appName","TicTacToe")
-                        .put("moduleName","entrance")
-                        .put("resourceId","TicTacToe/js/battlefield")
                         .put("clientAddress", ((String) msg.get("clientAddress")))
                         .put("usid", ((String) msg.get("usid")))
                 );
+
                 break;
             default:
                 log.error(localAddress+"::onClientMessage: unknown action "+action+" from client="+uid+", address="+from);

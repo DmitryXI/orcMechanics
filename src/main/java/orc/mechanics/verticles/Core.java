@@ -331,6 +331,12 @@ public class Core extends AbstractVerticle {
         String clientAddress = null;
 
         switch (action){
+            case "error":                                                   // Ретранслируем сообщение об ошибке
+                clientAddress = (String) msg.get("clientAddress");
+                msg.put("from", "core");
+                msg.remove("clientAddress");
+                msg.remove("usid");
+                sendClientMessage(clientAddress,"error", new JSONObject(msg));
             case "setGameEntrance":                                         // Отправляем модуль формы входа игры клиенту
                 clientAddress = (String) msg.get("clientAddress");
                 msg.put("from", "core");
