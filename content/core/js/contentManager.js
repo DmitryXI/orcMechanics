@@ -59,8 +59,8 @@ function core_contentManager_onMessage(msg){
                     if(msg.sessionsList === undefined){ log.error("core_contentManager_onMessage: sessionsList not set"); return; }
 
                      w().user.gameSessionsList = msg.sessionsList;
-                     log.data.debug("Set user.gameSessionsList: ", w().user.sessionsList);
-                     log.debug("Received list of game sessions: ", w().user.sessionsList);
+                     log.data.debug("Set user.gameSessionsList: ", w().user.gameSessionsList);
+                     log.debug("Received list of game sessions: ", w().user.gameSessionsList);
 
                     if(w().user.stage = "selectGame"){                             // Если это на этапе entrance, то удаляем форму входа в игру и подгружаем форму выбора игры
                         w().user.stage = "gameEntrance";

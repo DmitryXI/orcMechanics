@@ -1,6 +1,7 @@
 /* Модуль входа в игру Крестики-нолики */
 {
-let mainFormId = "TicTacToe_entrance";                     // Устанавливаем имя формы глобально в рамках модуля
+let mainFormId = "TicTacToe_entrance";                          // Устанавливаем имя формы глобально в рамках модуля
+let selectedGame = {"gsid":null,"address":null,"name":null,"el":null}     // Хранилище параметров выбранной игры для подключения
 
 
 
@@ -9,12 +10,14 @@ function TicTacToe_entrance_main(){
 
     if(f(mainFormId) === null){             // Навешиваем обработчики и пр. только если форма ещё не загружена и не обработана
         selGameFrm = addHTMLForm("TicTacToe/html/entrance", mainFormId, [80, 80], TicTacToe_entrance_cooker, []);
+
         selGameFrm.getHTMLElement("back").addEventListener('click', () => {             // Устанавливаем обработчик на конпку "Назад"
             delHTMLForm(mainFormId);                                                    // Полностью удаляем форму выбора игры
             w().user.stage = "selectGame";                                              // Выставляем текущий этап
             log.data.debug("Set user.stage: "+w().user.stage);
             core_selectGame_main();                                                     // Вызываем входную функцию модуля выбора игры
         });
+
         selGameFrm.getHTMLElement("create").addEventListener('click', () => {           // Устанавливаем обработчик на конпку "Создать"
             w().user.stage = "createGame";                                              // Выставляем текущий этап
             log.data.debug("Set user.stage: "+w().user.stage);
@@ -39,9 +42,21 @@ function TicTacToe_entrance_main(){
                 "winLineLen":selGameFrm.getHTMLElement("winLineLen").value,
                 "players":players}});                                                        // Отправляем запрос на создание игровой сессии с параметрами
         });
+
         selGameFrm.getHTMLElement("playersCount").addEventListener('change', function() {    // Устанавливаем обработчик для события change на селект с количеством игроков
             TicTacToe_entrance_selectMaker(this.value);
         }, false);
+
+        selGameFrm.getHTMLElement("join").addEventListener('click', () => {             // Устанавливаем обработчик на конпку "Подключиться"
+            w().user.stage = "joinGame";                                                // Выставляем текущий этап
+            log.data.debug("Set user.stage: "+w().user.stage);
+            selGameFrm.getHTMLElement("join").disabled = true;                          // Блокируем кнопку подключения
+            log.debug("Join to game: ", selectedGame);
+
+            sendMsg("core", "joinToGame", {"game":"TicTacToe","gsid":selectedGame.gsid}); // Отправляем запрос на создание игровой сессии с параметрами
+log.debug("Selected address: ", selectedGame);
+sendMsg(selectedGame.address, "test", {});
+        });
     }else{
         selGameFrm = f(mainFormId);
     }
@@ -66,11 +81,14 @@ function TicTacToe_entrance_showEntrance(parentId=null){
         return;
     }
 
+    selectedGame = {"gsid":null,"address":null,"name":null,"el":null}           // Каждый раз перед показом/обновлением формы сбрасываем выбранную игровую сессию
+
     let formElement = f(mainFormId,0);
 
     if(formElement !== null){
 
         TicTacToe_entrance_selectMaker(f(mainFormId).getHTMLElement("playersCount").value);         // Собираем блок с типами игроков для выбранного количества
+        TicTacToe_entrance_listMaker(w().user.gameSessionsList);
 
         if(d(mainFormId, parent) === null){
             parent.appendChild(getFormElement(mainFormId));
@@ -121,6 +139,41 @@ function TicTacToe_entrance_selectMaker(usrCount){
         }
 
         playersTypes.appendChild(cPlayersTypesLine);
+    }
+}
+
+// Создатель списка доступных игровых сессий
+function TicTacToe_entrance_listMaker(sessionsList){
+    log.func.debug6("TicTacToe_entrance_listMaker: sessionsList: ", sessionsList);
+
+    let list = f(mainFormId).getHTMLElement("sessions_list");               // Элемент со списком
+    let srcItem = f(mainFormId,2);                                          // Шаблон элемента списка
+    let item;                                                               // Элемент списка
+
+    list.innerHTML = "";
+
+    for(session in sessionsList){
+        item = srcItem.cloneNode(true);
+        item.children[0].innerHTML = sessionsList[session].name;
+        item.children[1].innerHTML = sessionsList[session].availableSeats+" / "+sessionsList[session].playersCount;
+        let gmSid = sessionsList[session].gsid;
+        let gmName = sessionsList[session].name;
+        let gmAddress = sessionsList[session].address;
+
+        item.addEventListener('click', function() {                                                      // Устанавливаем обработчик на выбор сессии в списке
+                        selectedGame.gsid = gmSid;
+                        selectedGame.name = gmName;
+                        selectedGame.address = gmAddress;
+                        log.data.debug("Set TicTacToe_selectedGame:", selectedGame);
+                        if(selectedGame.el instanceof HTMLElement){
+                            selectedGame.el.style.borderColor = "#FFF";
+                        }
+                        selectedGame.el = this;
+                        this.style.borderColor = "#999";
+                        f(mainFormId).getHTMLElement("join").disabled = false;
+                    });
+
+        list.appendChild(item);
     }
 
 }

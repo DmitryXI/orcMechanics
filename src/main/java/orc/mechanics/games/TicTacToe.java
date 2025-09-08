@@ -150,6 +150,28 @@ public class TicTacToe extends AbstractVerticle {
                     }
                 }
 
+//                waitingGame = new HashMap<>();
+//                waitingGame.put("gsid", "WR6IZJST78M0");
+//                waitingGame.put("address", "gmWR6IZJST78M0");
+//                waitingGame.put("name", "Поиграть 0");
+//                waitingGame.put("playersCount", "2");
+//                waitingGame.put("availableSeats", "1");
+//                waitingGames.put("WR6IZJST78M0", waitingGame);
+//                waitingGame = new HashMap<>();
+//                waitingGame.put("gsid", "WR6IZJST78M1");
+//                waitingGame.put("address", "gmWR6IZJST78M1");
+//                waitingGame.put("name", "Поиграть 1");
+//                waitingGame.put("playersCount", "3");
+//                waitingGame.put("availableSeats", "3");
+//                waitingGames.put("WR6IZJST78M1", waitingGame);
+//                waitingGame = new HashMap<>();
+//                waitingGame.put("gsid", "WR6IZJST78M2");
+//                waitingGame.put("address", "gmWR6IZJST78M2");
+//                waitingGame.put("name", "Поиграть 2");
+//                waitingGame.put("playersCount", "4");
+//                waitingGame.put("availableSeats", "2");
+//                waitingGames.put("WR6IZJST78M2", waitingGame);
+
                 sendClientMessage(from, "setGameEntrance", new JSONObject()
                         .put("appName","TicTacToe")
                         .put("moduleName","entrance")
@@ -215,7 +237,7 @@ public class TicTacToe extends AbstractVerticle {
                 }
 
                 String gameAddress = gameSessions.getAddress(gsid);
-                MessageConsumer<Object> mc = eb.localConsumer(gameAddress, this::onMessage);                // Адрес игры на шине (на адрес игры подписан только вертикл игры)
+                MessageConsumer<Object> mc = eb.localConsumer(gameAddress, this::onClientMessage);         // Адрес игры на шине (на адрес игры подписан только вертикл игры)
 
                 gameSessions.setValue(gsid, "consumer", mc);                                           // Адрес игры на шине (на адрес игры подписан только вертикл игры)
                 gameSessions.setValue(gsid, "owner", msg.get("usid"));                                 // Идентификатор сессии создателя игровой сессии
@@ -227,7 +249,7 @@ public class TicTacToe extends AbstractVerticle {
                 gameSessions.setValue(gsid, "players", players);                                       // Участники игры с текущми статусами и параметрами
                 gameSessions.setValue(gsid, "playersCount", Integer.valueOf((String) params.get("playersCount")));     // Общее количество игроков
                 gameSessions.setValue(gsid, "availableSeats", humans);                                 // Свободно для мест для участников-людей
-                gameSessions.setValue(gsid, "turnOf", null);                                     // Участник, ход которого ожидаем
+                gameSessions.setValue(gsid, "turnOf", 0);                                        // Участник, ход которого ожидаем
                 gameSessions.setStatus("waitingForPlayers", gsid);                                   // Устанавливаем статус "ожидание игроков"
                 action = "joinToGame";                                                                      // Выставляем action в joinToGame просто для порядка и единообразия
                 msg.put("action", action);                                                                  // Выставляем action в joinToGame просто для порядка и единообразия
@@ -265,6 +287,7 @@ public class TicTacToe extends AbstractVerticle {
                 }
 
                 players = gameSessions.getPlayers(gsid);
+                ArrayList<String> playersNames = new ArrayList<>();
 
                 for (HashMap<String, String> player : players){
                     if ((player.get("type").equals("human")) && (player.get("csid") == null)){
@@ -275,16 +298,41 @@ public class TicTacToe extends AbstractVerticle {
                         if (seats < 1) {
                             gameSessions.setStatus("ready", gsid);                                // Если сидалищные места закончились, меняем статус сессии
                         }
+                        playersNames.add((String) msg.get("playerName"));
                         break;
                     }
+                    playersNames.add((String) msg.get("playerName"));
                 }
 
-                sendClientMessage(from, "setGameSession", new JSONObject()
+                sendClientMessage(from, "setGameSession", new JSONObject()                        // Отправляем сессию игроку
                         .put("gameAddress", gameSessions.getAddress(gsid))
                         .put("clientAddress", (String) msg.get("clientAddress"))
                         .put("usid", (String) msg.get("usid"))
                         .put("gsid", gsid)
                 );
+
+                Integer nn = 0;
+                Boolean youTurn = false;
+                if (gameSessions.getStatus(gsid).equals("ready")) {                                      // Если сбор участников завершён, рассылаем команду на старт людям
+                    for (HashMap<String, String> player : players){
+                        if (player.get("type").equals("human")){
+                            if (nn == gameSessions.getInteger(gsid, "turnOf")) {
+                                youTurn = true;
+                            }else {
+                                youTurn = false;
+                            }
+                            sendGameMessage((String) player.get("csid"), gameSessions.getAddress(gsid),"startGame", new JSONObject()
+                                    .put("gsid", gsid)
+                                    .put("gameAddress", gameSessions.getAddress(gsid))
+                                    .put("turnOf", gameSessions.getInteger(gsid, "turnOf"))
+                                    .put("youTurn", youTurn)
+                                    .put("youNum", nn)
+                                    .put("playersNames", playersNames)
+                            );
+                        }
+                        nn++;
+                    }
+                }
 
                 gameSessions.setActivity(gsid);
 
@@ -298,7 +346,14 @@ public class TicTacToe extends AbstractVerticle {
     // Обработка сообщений от клиентов в рамках игровых сессий
     public void onClientMessage(Message<Object> ebMsg){
 
-        System.out.println(localAddress+"onClientMessage: Received message from game: "+ebMsg.toString());
+        System.out.println(localAddress+"::onClientMessage: Received message");
+
+        String address = ebMsg.address();
+        String gsid = gameSessions.getUidByAddress(address);
+
+        if (gsid == null){
+            sendClientMessage(address, "error", new JSONObject().put("text", "Session not found"));
+        }
 
         HashMap<String, Object> msg;
 
@@ -321,6 +376,8 @@ public class TicTacToe extends AbstractVerticle {
             sendClientMessage(from, "error", new JSONObject().put("text", "no action field in body"));
             return;
         }
+
+        sendClientMessage(from, "error", new JSONObject().put("text", "Not ready yet"));
     }
 
     // Отправление шаблонного сообщения клиенту
@@ -329,6 +386,14 @@ public class TicTacToe extends AbstractVerticle {
         msg.put("action", action);
         eb.send(to, msg.toString());
         log.debug(localAddress+"::sendClientMessage: sended message: "+msg.toString());
+    }
+
+    // Отправление шаблонного сообщения клиенту
+    public void sendGameMessage(String to, String from, String action,JSONObject msg){
+        msg.put("from", from);
+        msg.put("action", action);
+        eb.send(to, msg.toString());
+        log.debug(localAddress+"::sendGameMessage: sended message: "+msg.toString());
     }
 
     // Подготовка списка игровых сессий ожидающих подключение игрока

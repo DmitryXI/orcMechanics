@@ -151,6 +151,18 @@ public class SessionsManager {
         return null;
     }
 
+    // Получить идентификатор сессии по адресу
+    public String getUidByAddress(String address){
+
+        if (addresses.containsKey(address)) {
+            return (String)  ((HashMap<String, Object>) (addresses.get(address))).get("uid");
+        }else {
+//            log.error("getUidByAddress: address "+address+" not found in adresses index");
+        }
+
+        return null;
+    }
+
     // Получить адрес шины сессии по UID
     public String getAddress(String uid){
 

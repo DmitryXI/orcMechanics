@@ -296,13 +296,29 @@ public class Core extends AbstractVerticle {
                     .put("clientAddress", (String) msg.get("from"));
                 sendClientMessage((String) msg.get("game"),"getGameEntrance", resp);
                 break;
-            case "createNewGame":                                          // Запрашиваем игровую сессию у игрового вертикла
-                resp.put("game", (String) msg.get("game"))
-                        .put("usid", uid)
-                        .put("clientAddress", (String) msg.get("from"))
-                        .put("playerName", clientSessions.getString(uid, "playerName"))
-                        .put("params", msg.get("params"));
-                sendClientMessage((String) msg.get("game"),"createNewGame", resp);
+            case "createNewGame":                                          // Запрашиваем новую игровую сессию у игрового вертикла
+                if (clientSessions.getGameId(uid) == null) {               // Проверяем участие игрока в другой игровой сессии
+                    resp.put("game", (String) msg.get("game"))
+                            .put("usid", uid)
+                            .put("clientAddress", (String) msg.get("from"))
+                            .put("playerName", clientSessions.getString(uid, "playerName"))
+                            .put("params", msg.get("params"));
+                    sendClientMessage((String) msg.get("game"), "createNewGame", resp);
+                }else {
+                    sendClientMessage(from, "error", new JSONObject().put("action","error").put("text","You already in game"));
+                }
+                break;
+            case "joinToGame":                                            // Пытаемся добавить клиента в игровую сессию
+                if (clientSessions.getGameId(uid) == null) {               // Проверяем участие игрока в другой игровой сессии
+                    resp.put("game", (String) msg.get("game"))
+                            .put("usid", uid)
+                            .put("gsid", (String) msg.get("gsid"))
+                            .put("clientAddress", (String) msg.get("from"))
+                            .put("playerName", clientSessions.getString(uid, "playerName"));
+                    sendClientMessage((String) msg.get("game"),"joinToGame", resp);
+                }else {
+                    sendClientMessage(from, "error", new JSONObject().put("action","error").put("text","You already in game"));
+                }
                 break;
             default:
                 log.error("Core::onClientMessage: unknown action "+action+" from client="+uid+", address="+from);
