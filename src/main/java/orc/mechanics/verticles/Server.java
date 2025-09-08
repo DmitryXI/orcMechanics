@@ -125,6 +125,14 @@ public class Server extends AbstractVerticle {
                 msg.put("from", "server");
                 eb.send("general", (new JSONObject(msg)).toString());
                 break;
+            case "newGameSession":
+//                log.debug("Server::onCoreMessage: Sending game session, adding address permission");
+                addEbPermit((String) msg.get("address"));                                                   // Добавляем разрешение для адреса новой игровой сессии
+                break;
+            case "removeGameSession":
+//                log.debug("Server::onCoreMessage: removing game session, adding address permission");
+                addEbPermit((String) msg.get("address"));                                                   // Добавляем разрешение для адреса новой игровой сессии
+                break;
             case "removeAddress":
 //                log.debug("Server::onCoreMessage: removing client session address"+msg.get("address"));
 //                System.out.println("removing client session address: "+msg.get("address"));

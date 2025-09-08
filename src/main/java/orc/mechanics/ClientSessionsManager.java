@@ -130,6 +130,31 @@ public class ClientSessionsManager extends SessionsManager {
         return false;
     }
 
+    // Получить идентификатор игровой сессии клиента
+    public String getGameId(String uid){
+
+        HashMap<String, Object> ses = getSession(uid);
+
+        if (ses != null) {
+            return (String) ses.get("gsid");
+        }
+
+        return null;
+    }
+
+    // Установить идентификатор игровой сессии клиента
+    public boolean setGameId(String uid, String gsid){
+
+        HashMap<String, Object> ses = getSession(uid);
+
+        if (ses != null) {
+            ses.put("gsid", gsid);
+            return true;
+        }
+
+        return false;
+    }
+
     // Удаление просроченных клиентских сессий
     @Override
     public HashMap<String, Object> removeTheDead(){

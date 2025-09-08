@@ -1,16 +1,20 @@
 package orc.mechanics.games;
 
 import com.google.gson.Gson;
+import com.google.gson.internal.LinkedTreeMap;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.shareddata.LocalMap;
 import orc.mechanics.GameSessionsManager;
 import orc.mechanics.verticles.Core;
 import org.json.JSONObject;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 
 
@@ -36,6 +40,10 @@ public class TicTacToe extends AbstractVerticle {
 
         verticlesAddresses.put(localAddress, "TicTacToe");                                           // Регистрируем адрес в общем списке
         gamesList.put(localAddress, "Крестики-нолики");                                              // Регистрируем игру в общем списке
+
+//        MessageConsumer<Object> mc;                                                                   // Тестируем сохранение консумера для возможности снятия регистрации с адреса
+//        mc = eb.localConsumer(localAddress, this::onMessage);                                         // Подписываемся на сообщения на свой адрес
+//        mc.unregister();
 
         eb.localConsumer(localAddress, this::onMessage);                                                // Подписываемся на сообщения на свой адрес
         gameSessions.setTtl(600);                                                                       // Устанавливаем время жизни неактивной клиентской сессии в 10 минут
@@ -72,7 +80,7 @@ public class TicTacToe extends AbstractVerticle {
         try {
             msg = new Gson().fromJson(ebMsg.body().toString(), HashMap.class);
         }catch (Exception e){
-            log.error(localAddress+"::onLocalMessage: received wrong JSON-string ("+ebMsg.body().toString()+")");
+            log.error(localAddress+"::onMessage: received wrong JSON-string ("+ebMsg.body().toString()+")");
             return;
         }
 
@@ -80,11 +88,11 @@ public class TicTacToe extends AbstractVerticle {
         String action = (String) msg.get("action");
 
         if (from == null){
-            log.error(localAddress+"::onClientMessage: no from field in body ("+msg.toString()+")");
+            log.error(localAddress+"::onMessage: no from field in body ("+msg.toString()+")");
             return;
         }
         if (action == null){
-            log.error(localAddress+"::onClientMessage: no action field in body ("+msg.toString()+")");
+            log.error(localAddress+"::onMessage: no action field in body ("+msg.toString()+")");
             sendClientMessage(from, "error", new JSONObject().put("text","no action field in body"));
             return;
         }
@@ -93,10 +101,8 @@ public class TicTacToe extends AbstractVerticle {
             onServerMessage(msg);
         } else if (from.equals("core")) {
             onCoreMessage(msg);
-        } else if ((from.length() == 14) && (from.substring(0,2).equals("gm"))) {
-            onClientMessage(msg);
-        } else {
-            log.error(localAddress+"::onLocalMessage: Unexpected sender: "+from);
+        }else{
+            log.error(localAddress+"::onMessage: Unexpected sender: "+from);
             return;
         }
     }
@@ -114,7 +120,9 @@ public class TicTacToe extends AbstractVerticle {
 
         String from   = (String) msg.get("from");
         String action = (String) msg.get("action");
-        String uid    = (String) msg.get("usid");
+        String uid    = (String) msg.get("usid");                   // Идентификатор клиентской сессии
+        String gsid    = (String) msg.get("gsid");                  // Идентификатор игровой сессии
+        ArrayList<HashMap<String, String>> players;                 // Список участников игры
 
         if (uid == null){
             log.error(localAddress+"::onClientMessage: no usid field in body ("+msg.toString()+")");
@@ -125,60 +133,160 @@ public class TicTacToe extends AbstractVerticle {
 
         switch (action){
             case "getGameEntrance":                                                         // Отвечаем ядру на запрос формы входа
+
+                HashMap<String, Object> sessions = gameSessions.getSessions();
+                HashMap<String, Object> waitingGames = new HashMap<>();
+                HashMap<String, String> waitingGame;
+
+                for (String sid : sessions.keySet()){
+                    if (gameSessions.getStatus(sid).equals("waitingForPlayers")) {
+                        waitingGame = new HashMap<>();
+                        waitingGame.put("gsid", sid);
+                        waitingGame.put("address", gameSessions.getAddress(sid));
+                        waitingGame.put("name", gameSessions.getString(sid, "name"));
+                        waitingGame.put("playersCount", gameSessions.getInteger(sid, "playersCount").toString());
+                        waitingGame.put("availableSeats", gameSessions.getInteger(sid, "availableSeats").toString());
+                        waitingGames.put(sid, waitingGame);
+                    }
+                }
+
                 sendClientMessage(from, "setGameEntrance", new JSONObject()
-                        .put("sessionsList", getAwaitingSessions())
                         .put("appName","TicTacToe")
                         .put("moduleName","entrance")
                         .put("resourceId","TicTacToe/js/entrance")
-                        .put("clientAddress", ((String) msg.get("clientAddress")))
-                        .put("usid", ((String) msg.get("usid")))
+                        .put("clientAddress", (String) msg.get("clientAddress"))
+                        .put("usid", (String) msg.get("usid"))
+                        .put("sessionsList", waitingGames)
                 );
                 break;
-            case "createNewGame":                                                         // Отвечаем ядру на запрос формы входа
-
-                String gsuid = gameSessions.create();                                     // Создаём игровую сессию
-//                HashMap<String, Object> ses = (HashMap<String, Object>) (gameSessions.create(true));                    // Создаём игровую сессию
-//                String gsuid = (String) (ses.get("uid"));
-
-                if (gsuid == null) {                                                      // Если не удалось создать игровую сессию отправляем на core ошибку
+            case "createNewGame":                                                         // Создаём ноаую игру и идём дальше на подключение к ней
+                if (((LinkedTreeMap<String, Object>)((LinkedTreeMap<String, Object>)msg.get("params")).get("players")).size() < 2) {        // В игре должно быть не меньше двух игроков
                     sendClientMessage(from, "error", new JSONObject()
                             .put("action","error")
-                            .put("text","Can't create new game session")
-                            .put("clientAddress", ((String) msg.get("clientAddress")))
-                            .put("usid", ((String) msg.get("usid")))
+                            .put("text","Players count must be more 1")
+                            .put("clientAddress", (String) msg.get("clientAddress"))
+                            .put("usid", (String) msg.get("usid"))
                     );
 
                     return;
                 }
 
-                // game=TicTacToe,
-                // action=createNewGame,
-                // from=core,
-                // params={fieldSizeX=4,
-                // fieldSizeY=4,
-                // playersCount=2,
-                // gameName=Новая игра,
-                // players={playerName_0=player, playerName_1=player},
-                // winLineLen=4},
-                // clientAddress=clZ0L0GRBRJ2YF,
-                // usid=Z0L0GRBRJ2YF
+                Integer humans = 0;
+                Integer ais    = 0;
+                LinkedTreeMap<String, Object> params = (LinkedTreeMap<String, Object>)msg.get("params");
+                players = new ArrayList<>();
 
-                HashMap<String, String> players = new HashMap<>();
+                for (Object playerType : ((LinkedTreeMap<String, Object>)((LinkedTreeMap<String, Object>)msg.get("params")).get("players")).values()){
+                    HashMap<String, String> player = new HashMap<>();
+                    player.put("type", (String) playerType);                            // Тип игрока
+                    player.put("csid", null);                                           // Идентификатор клиентской сессии
+                    if (((String) playerType).equals("human")) {
+                        humans++;
+                        player.put("name", "Human "+humans);
+                    }else {
+                        ais++;
+                        player.put("name", "ИИ "+ais);
+                    }
+                    players.add(player);
+                }
 
-                gameSessions.setValue(gsuid, "name", msg.get("gameName"));                              // Имя игровой сессии
-                gameSessions.setValue(gsuid, "winLineLen", (Integer) msg.get("winLineLen"));            // Длина линии победы
-                gameSessions.setValue(gsuid, "field", null);                                      // Игровое поле
-                gameSessions.setValue(gsuid, "fieldX", (Integer) msg.get("fieldSizeX"));                // Ширина игрового поля
-                gameSessions.setValue(gsuid, "fieldY", (Integer) msg.get("fieldSizeY"));                // Высота игрового поля
-                gameSessions.setValue(gsuid, "players", players);                                       // Участники игры с текущми статусами и параметрами
+                if (humans < 1) {
+                    sendClientMessage(from, "error", new JSONObject()
+                            .put("action","error")
+                            .put("text","Humans count must be more 0")
+                            .put("clientAddress", (String) msg.get("clientAddress"))
+                            .put("usid", (String) msg.get("usid"))
+                    );
 
+                    return;
+                }
 
-                sendClientMessage(from, "error", new JSONObject()
-                        .put("action","error")
-                        .put("text","Not ready yet")
-                        .put("clientAddress", ((String) msg.get("clientAddress")))
-                        .put("usid", ((String) msg.get("usid")))
+                gsid = gameSessions.create();                                            // Создаём игровую сессию
+
+                if (gsid == null) {                                                      // Если не удалось создать игровую сессию отправляем на core ошибку
+                    sendClientMessage(from, "error", new JSONObject()
+                            .put("action","error")
+                            .put("text","Can't create new game session")
+                            .put("clientAddress", (String) msg.get("clientAddress"))
+                            .put("usid", (String) msg.get("usid"))
+                    );
+
+                    return;
+                }
+
+                String gameAddress = gameSessions.getAddress(gsid);
+                MessageConsumer<Object> mc = eb.localConsumer(gameAddress, this::onMessage);                // Адрес игры на шине (на адрес игры подписан только вертикл игры)
+
+                gameSessions.setValue(gsid, "consumer", mc);                                           // Адрес игры на шине (на адрес игры подписан только вертикл игры)
+                gameSessions.setValue(gsid, "owner", msg.get("usid"));                                 // Идентификатор сессии создателя игровой сессии
+                gameSessions.setValue(gsid, "name", params.get("gameName"));                           // Имя игровой сессии
+                gameSessions.setValue(gsid, "winLineLen", Integer.valueOf((String) params.get("winLineLen")));         // Длина линии победы
+                gameSessions.setValue(gsid, "field", null);                                      // Игровое поле
+                gameSessions.setValue(gsid, "fieldX", Integer.valueOf((String) params.get("fieldSizeX")));             // Ширина игрового поля
+                gameSessions.setValue(gsid, "fieldY", Integer.valueOf((String) params.get("fieldSizeY")));             // Высота игрового поля
+                gameSessions.setValue(gsid, "players", players);                                       // Участники игры с текущми статусами и параметрами
+                gameSessions.setValue(gsid, "playersCount", Integer.valueOf((String) params.get("playersCount")));     // Общее количество игроков
+                gameSessions.setValue(gsid, "availableSeats", humans);                                 // Свободно для мест для участников-людей
+                gameSessions.setValue(gsid, "turnOf", null);                                     // Участник, ход которого ожидаем
+                gameSessions.setStatus("waitingForPlayers", gsid);                                   // Устанавливаем статус "ожидание игроков"
+                action = "joinToGame";                                                                      // Выставляем action в joinToGame просто для порядка и единообразия
+                msg.put("action", action);                                                                  // Выставляем action в joinToGame просто для порядка и единообразия
+                msg.put("gsid", gsid);                                                                      // Добавляем в сообщение идентификатор игровой сессии
+
+                sendClientMessage(from, "newGameSession", new JSONObject()                            // Отправляем кору запрос на регистрацию адреса игровой сессии
+                        .put("address",gameAddress)
+                        .put("gsid", gsid)
                 );
+//                break;                                                                                    // Не прерываем swith после создания игры и сразу переходим на подключение к ней игрока
+            case "joinToGame":                                                                                  // Подключение к существующей игре
+
+                System.out.println("Joing to game: "+msg.toString());
+
+                if (gameSessions.getSession(gsid) == null) {
+                    log.debug(localAddress+"::onClientMessage: no session with gsid: "+gsid);
+
+                    sendClientMessage(from, "error", new JSONObject()
+                            .put("text","Session "+gsid+" not exists")
+                            .put("clientAddress", (String) msg.get("clientAddress"))
+                            .put("usid", (String) msg.get("usid"))
+                    );
+                    return;
+                }
+
+                if (!gameSessions.getStatus(gsid).equals("waitingForPlayers")) {
+                    log.debug(localAddress+"::onClientMessage: no waiting players in session gsid: "+gsid);
+
+                    sendClientMessage(from, "error", new JSONObject()
+                            .put("text","Session "+gsid+" no waiting players")
+                            .put("clientAddress", (String) msg.get("clientAddress"))
+                            .put("usid", (String) msg.get("usid"))
+                    );
+                    return;
+                }
+
+                players = gameSessions.getPlayers(gsid);
+
+                for (HashMap<String, String> player : players){
+                    if ((player.get("type").equals("human")) && (player.get("csid") == null)){
+                        player.put("csid", uid);
+                        player.put("name", (String) msg.get("playerName"));
+                        Integer seats = gameSessions.getInteger(gsid, "availableSeats") - 1;
+                        gameSessions.setValue(gsid, "availableSeats", seats);
+                        if (seats < 1) {
+                            gameSessions.setStatus("ready", gsid);                                // Если сидалищные места закончились, меняем статус сессии
+                        }
+                        break;
+                    }
+                }
+
+                sendClientMessage(from, "setGameSession", new JSONObject()
+                        .put("gameAddress", gameSessions.getAddress(gsid))
+                        .put("clientAddress", (String) msg.get("clientAddress"))
+                        .put("usid", (String) msg.get("usid"))
+                        .put("gsid", gsid)
+                );
+
+                gameSessions.setActivity(gsid);
 
                 break;
             default:
@@ -188,9 +296,31 @@ public class TicTacToe extends AbstractVerticle {
     }
 
     // Обработка сообщений от клиентов в рамках игровых сессий
-    public void onClientMessage(HashMap<String, Object> msg){
+    public void onClientMessage(Message<Object> ebMsg){
 
-        System.out.println(localAddress+"onClientMessage: Received message from game: "+msg.toString());
+        System.out.println(localAddress+"onClientMessage: Received message from game: "+ebMsg.toString());
+
+        HashMap<String, Object> msg;
+
+        try {
+            msg = new Gson().fromJson(ebMsg.body().toString(), HashMap.class);
+        }catch (Exception e){
+            log.error(localAddress+"::onClientMessage: received wrong JSON-string ("+ebMsg.body().toString()+")");
+            return;
+        }
+
+        String from   = (String) msg.get("from");
+        String action = (String) msg.get("action");
+
+        if (from == null){
+            log.error(localAddress+"::onClientMessage: no from field in body ("+msg.toString()+")");
+            return;
+        }
+        if (action == null) {
+            log.error(localAddress + "::onClientMessage: no action field in body (" + msg.toString() + ")");
+            sendClientMessage(from, "error", new JSONObject().put("text", "no action field in body"));
+            return;
+        }
     }
 
     // Отправление шаблонного сообщения клиенту

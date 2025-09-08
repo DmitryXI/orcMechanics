@@ -298,8 +298,9 @@ public class Core extends AbstractVerticle {
                 break;
             case "createNewGame":                                          // Запрашиваем игровую сессию у игрового вертикла
                 resp.put("game", (String) msg.get("game"))
-                        .put("usid", (String) msg.get("usid"))
+                        .put("usid", uid)
                         .put("clientAddress", (String) msg.get("from"))
+                        .put("playerName", clientSessions.getString(uid, "playerName"))
                         .put("params", msg.get("params"));
                 sendClientMessage((String) msg.get("game"),"createNewGame", resp);
                 break;
@@ -329,6 +330,7 @@ public class Core extends AbstractVerticle {
 
         JSONObject resp = new JSONObject();
         String clientAddress = null;
+        String uid = null;
 
         switch (action){
             case "error":                                                   // Ретранслируем сообщение об ошибке
@@ -337,6 +339,14 @@ public class Core extends AbstractVerticle {
                 msg.remove("clientAddress");
                 msg.remove("usid");
                 sendClientMessage(clientAddress,"error", new JSONObject(msg));
+                break;
+            case "alert":                                                   // Ретранслируем сообщение об ошибке
+                clientAddress = (String) msg.get("clientAddress");
+                msg.put("from", "core");
+                msg.remove("clientAddress");
+                msg.remove("usid");
+                sendClientMessage(clientAddress,"alert", new JSONObject(msg));
+                break;
             case "setGameEntrance":                                         // Отправляем модуль формы входа игры клиенту
                 clientAddress = (String) msg.get("clientAddress");
                 msg.put("from", "core");
@@ -346,14 +356,24 @@ public class Core extends AbstractVerticle {
                 break;
             case "setGameSession":                                           // Отправляем игровую сессию клиенту
                 clientAddress = (String) msg.get("clientAddress");
+                uid = (String) msg.get("usid");
                 msg.put("from", "core");
                 msg.remove("clientAddress");
                 msg.remove("usid");
+                clientSessions.setGameId(uid, (String) msg.get("gsid"));
                 sendClientMessage(clientAddress,"setGameSession", new JSONObject(msg));
+                break;
+            case "newGameSession":                                           // Добавляем адрес игровой сессии в разрешения на сервере
+                msg.put("from", "core");
+                sendClientMessage("server","newGameSession", new JSONObject(msg));
+                break;
+            case "removeGameSession":                                           // Удаляем адрес игровой сессии из разрешений на сервере
+                msg.put("from", "core");
+                sendClientMessage("server","removeGameSession", new JSONObject(msg));
                 break;
             default:
                 log.error("Core::onGamesMessage: unknown action "+action+" from game "+from);
-                sendClientMessage(from,"error", new JSONObject().put("text","unknown action "+action));
+//                sendClientMessage(from,"error", new JSONObject().put("text","unknown action "+action));
         }
     }
 

@@ -28,6 +28,9 @@ function core_contentManager_onMessage(msg){
     log.debug("core_contentManager_onMessage: Received message: ",msg);
 
             switch(msg.action) {
+              case "alert":
+                alert(msg.text);
+                break;
               case "setPlayerName":
                 w().user.name = msg.name;
                 log.data.debug("Set user.name: "+w().user.name);

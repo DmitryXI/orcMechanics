@@ -58,6 +58,18 @@ public class SessionsManager {
         return null;
     }
 
+    // Получить значение произвольного поля типа Integer
+    public Integer getInteger(String uid, String key){
+
+        HashMap<String, Object> ses = getSession(uid);
+
+        if (ses != null) {
+            return (Integer) (ses.get(key));
+        }
+
+        return null;
+    }
+
     // Установить ttl
     public void setTtl(Integer ttl) {
         this.ttl = ttl;
@@ -272,7 +284,7 @@ public class SessionsManager {
         return sessions.size();
     }
 
-    // Получить ссылка на хранилище сессий
+    // Получить ссылку на хранилище сессий
     public HashMap<String, Object> getSessions() {
 
         return this.sessions;
