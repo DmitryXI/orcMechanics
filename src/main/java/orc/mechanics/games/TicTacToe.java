@@ -264,7 +264,7 @@ public class TicTacToe extends AbstractVerticle {
 
                 System.out.println("Joing to game: "+msg.toString());
 
-                if (gameSessions.getSession(gsid) == null) {
+                if (gameSessions.getSession(gsid) == null) {                                                    // Если нет такой игровой сессии
                     log.debug(localAddress+"::onClientMessage: no session with gsid: "+gsid);
 
                     sendClientMessage(from, "error", new JSONObject()
@@ -275,7 +275,7 @@ public class TicTacToe extends AbstractVerticle {
                     return;
                 }
 
-                if (!gameSessions.getStatus(gsid).equals("waitingForPlayers")) {
+                if (!gameSessions.getStatus(gsid).equals("waitingForPlayers")) {                                // Если статус сессии отличается от "ожидание игроков"
                     log.debug(localAddress+"::onClientMessage: no waiting players in session gsid: "+gsid);
 
                     sendClientMessage(from, "error", new JSONObject()
@@ -287,41 +287,50 @@ public class TicTacToe extends AbstractVerticle {
                 }
 
                 players = gameSessions.getPlayers(gsid);
-                ArrayList<String> playersNames = new ArrayList<>();
 
                 for (HashMap<String, String> player : players){
                     if ((player.get("type").equals("human")) && (player.get("csid") == null)){
                         player.put("csid", uid);
+                        player.put("clientAddress", (String) msg.get("clientAddress"));
                         player.put("name", (String) msg.get("playerName"));
                         Integer seats = gameSessions.getInteger(gsid, "availableSeats") - 1;
                         gameSessions.setValue(gsid, "availableSeats", seats);
+//System.out.println("Seats = "+seats);
                         if (seats < 1) {
                             gameSessions.setStatus("ready", gsid);                                // Если сидалищные места закончились, меняем статус сессии
                         }
-                        playersNames.add((String) msg.get("playerName"));
                         break;
                     }
-                    playersNames.add((String) msg.get("playerName"));
                 }
 
-                sendClientMessage(from, "setGameSession", new JSONObject()                        // Отправляем сессию игроку
+                ArrayList<String> playersNames = new ArrayList<>();
+                for (HashMap<String, String> player : players){
+                    playersNames.add((String) player.get("name"));
+                }
+
+                sendClientMessage(from, "setGameSession", new JSONObject()                        // Отправляем сессию игроку (комплектом данные для подключения модуля)
                         .put("gameAddress", gameSessions.getAddress(gsid))
                         .put("clientAddress", (String) msg.get("clientAddress"))
                         .put("usid", (String) msg.get("usid"))
                         .put("gsid", gsid)
+                        .put("appName","TicTacToe")
+                        .put("moduleName","awaiting")
+                        .put("resourceId","TicTacToe/js/awaiting")
                 );
 
                 Integer nn = 0;
                 Boolean youTurn = false;
                 if (gameSessions.getStatus(gsid).equals("ready")) {                                      // Если сбор участников завершён, рассылаем команду на старт людям
+//System.out.println("Game ready");
                     for (HashMap<String, String> player : players){
                         if (player.get("type").equals("human")){
+//System.out.println("Player is human");
                             if (nn == gameSessions.getInteger(gsid, "turnOf")) {
                                 youTurn = true;
                             }else {
                                 youTurn = false;
                             }
-                            sendGameMessage((String) player.get("csid"), gameSessions.getAddress(gsid),"startGame", new JSONObject()
+                            sendGameMessage((String) player.get("clientAddress"), gameSessions.getAddress(gsid),"startGame", new JSONObject()
                                     .put("gsid", gsid)
                                     .put("gameAddress", gameSessions.getAddress(gsid))
                                     .put("turnOf", gameSessions.getInteger(gsid, "turnOf"))
@@ -390,6 +399,9 @@ public class TicTacToe extends AbstractVerticle {
 
     // Отправление шаблонного сообщения клиенту
     public void sendGameMessage(String to, String from, String action,JSONObject msg){
+
+        System.out.println(localAddress+"::sendGameMessage: to="+to+", from="+from+", msg="+msg.toString());
+
         msg.put("from", from);
         msg.put("action", action);
         eb.send(to, msg.toString());

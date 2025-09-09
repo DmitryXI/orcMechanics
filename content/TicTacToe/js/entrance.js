@@ -54,8 +54,6 @@ function TicTacToe_entrance_main(){
             log.debug("Join to game: ", selectedGame);
 
             sendMsg("core", "joinToGame", {"game":"TicTacToe","gsid":selectedGame.gsid}); // Отправляем запрос на создание игровой сессии с параметрами
-log.debug("Selected address: ", selectedGame);
-sendMsg(selectedGame.address, "test", {});
         });
     }else{
         selGameFrm = f(mainFormId);

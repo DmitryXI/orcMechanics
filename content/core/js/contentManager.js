@@ -28,14 +28,14 @@ function core_contentManager_onMessage(msg){
     log.debug("core_contentManager_onMessage: Received message: ",msg);
 
             switch(msg.action) {
-              case "alert":
+              case "alert":                                                     // Отображаем алерт
                 alert(msg.text);
                 break;
               case "setPlayerName":
                 w().user.name = msg.name;
                 log.data.debug("Set user.name: "+w().user.name);
                 break;
-              case "setGamesList":
+              case "setGamesList":                                              // Принимаем список доступных игр (если этап entrance, то подключаем модуль)
                  w().user.gamesList = msg.list;
                  log.data.debug("Set user.gamesList: ", w().user.gamesList);
                  log.debug("Received list of games: ", w().user.gamesList);
@@ -51,7 +51,7 @@ function core_contentManager_onMessage(msg){
                     }
                  }
                 break;
-                case "setGameEntrance":
+                case "setGameEntrance":                                         // Отображаем форму входа игры (поставляется самой игрой)
                     log.data.debug("Received game entrance params: ", msg);
                     if(msg.resourceId === undefined){ log.error("core_contentManager_onMessage: recourceId not set"); return; }
                     if(msg.appName === undefined){ log.error("core_contentManager_onMessage: appName not set"); return; }
@@ -76,6 +76,30 @@ function core_contentManager_onMessage(msg){
                         }else{
                             log.error("core_contentManager_onMessage: Error loading selectGame module");
                         }
+                    }
+                break;
+                case "setGameSession":                                              // Принимаем игровую сессию и передаём управление игре
+                    log.data.debug("Received game session: ", msg);
+                    if(msg.resourceId === undefined){ log.error("core_contentManager_onMessage: recourceId not set"); return; }
+                    if(msg.appName === undefined){ log.error("core_contentManager_onMessage: appName not set"); return; }
+                    if(msg.moduleName === undefined){ log.error("core_contentManager_onMessage: moduleName not set"); return; }
+                    if(msg.gameAddress === undefined){ log.error("core_contentManager_onMessage: gameAddress not set"); return; }
+                    if(msg.gsid === undefined){ log.error("core_contentManager_onMessage: gsid not set"); return; }
+                    w().user.gameAddress = msg.gameAddress;
+                    w().user.gsid        = msg.gsid;
+                    w().user.stage = "gaming";
+                    log.data.debug("Set user.gsid: "+w().user.gsid);
+                    log.data.debug("Set user.gameAddress: "+w().user.gameAddress);
+                    log.data.debug("Set user.stage: "+w().user.stage);
+                    if(loadScript(msg.resourceId)){                            // Синхронно подгружаем скрипт модуля формы ожидания игроков (в синглплеере сразу игру)
+                        log.debug(msg.moduleName+" module loaded");
+                        let mainFunctionName = msg.appName+"_"+msg.moduleName+"_main";
+                        log.debug("Call "+mainFunctionName);
+                        if(window[mainFunctionName] instanceof Function){       // Вызываем входную функцию
+                            window[mainFunctionName]();
+                        }
+                    }else{
+                        log.error("core_contentManager_onMessage: Error loading starting game module");
                     }
                 break;
               default:
