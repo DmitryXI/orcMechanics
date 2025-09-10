@@ -13,6 +13,7 @@ import orc.mechanics.ClientSessionsManager;
 import org.json.JSONObject;
 
 import java.util.HashMap;
+import java.util.Map;
 
 
 // Ядро платформы: основной процессор всего кроме непосредственно классов игр
@@ -400,8 +401,17 @@ public class Core extends AbstractVerticle {
                 sendClientMessage("server","newGameSession", new JSONObject(msg));
                 break;
             case "removeGameSession":                                           // Удаляем адрес игровой сессии из разрешений на сервере
+                for (Map.Entry<String, Object> cSesEntry : clientSessions.getSessions().entrySet()){
+                    HashMap<String, Object> cSes = (HashMap<String, Object>) cSesEntry.getValue();
+                    String cGameId = (String) cSes.get("gsid");
+                    if ((cGameId != null) && (cGameId.equals((String) msg.get("gsid")))) {
+                        cSes.put("gsid", null);
+                    }
+                }
+
                 msg.put("from", "core");
-                sendClientMessage("server","removeGameSession", new JSONObject(msg));
+                msg.put("action", "removeAddress");
+                sendClientMessage("server","removeAddress", new JSONObject(msg));
                 break;
             default:
                 log.error("Core::onGamesMessage: unknown action "+action+" from game "+from);
