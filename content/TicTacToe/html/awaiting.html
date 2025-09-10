@@ -1,0 +1,42 @@
+// Основная форма и стиль
+<div id="${id}" style="position:relative; z-index:${z}; border:solid black 1px; padding 0px;">
+    <style>
+        #${id}_menuHeader {
+            display: flex;
+            width: 100%;
+            font-size: 20px;
+            background-color: #CCC;
+            text-align: center;
+            padding: 0px;
+            padding-top: 5px;
+            padding-bottom: 5px;
+            cursor: default;
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none; /* Safari */
+            -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Old versions of Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently */
+        }
+        #${id}_back {
+            display: flex;
+            justify-content: flex-start;
+            font-weight: bold;
+            padding-left: 5px;
+            padding-right: 5px;
+            data-hint: "Предыдущее меню";
+        }
+        #${id}_back:hover {
+            cursor: pointer;
+        }
+    </style>
+    <div id="${id}_menuHeader">
+        <div id="${id}_back">&lt;</div>
+        <div style="display: flex; flex: 1; justify-content: center;">Крестики-нолики</div>
+    </div>
+    <div id="${id}_main_block">
+            <div class="${id}_title">Ожидание игроков</div>
+            <div class="${id}_list">Список игроков</div>
+    </div>
+</div>
+<div class="${id}_item">Информация о участнике...</div>

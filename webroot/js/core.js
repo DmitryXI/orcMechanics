@@ -464,8 +464,8 @@ function addHTMLForm(contentId, formId, resizeParams=[], cook=null, cookParams=[
             cookParams.unshift(srcHtml, formId);                                                // Добавляем первым параметром в списке исходный HTML
             elements = cook(...cookParams);
         }else{                                                                                  // Если спец.обработчик не задан, создаём элементы стандартным образом
-            let html = srcHtml.replaceAll("${id}", formId).replaceAll("${z}", 1);
-            let elements = getElementsFromHTML(html);
+            let html = srcHtml.replaceAll("${id}", formId).replaceAll("${z}", 1);               // Заменяем в исходном HTML шаблоны ${id} и ${z} на значения
+            elements = getElementsFromHTML(html);
         }
 
         // Добавляем форму в хранилище

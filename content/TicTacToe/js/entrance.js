@@ -5,14 +5,15 @@ let selectedGame = {"gsid":null,"address":null,"name":null,"el":null}     // Х�
 
 
 
-function TicTacToe_entrance_main(){
+function TicTacToe_entrance_main(){                                                     // Входная функция модуля
+    log.func.debug6("TicTacToe_entrance_main");
     let selGameFrm = null;
 
     if(f(mainFormId) === null){             // Навешиваем обработчики и пр. только если форма ещё не загружена и не обработана
         selGameFrm = addHTMLForm("TicTacToe/html/entrance", mainFormId, [80, 80], TicTacToe_entrance_cooker, []);
 
         selGameFrm.getHTMLElement("back").addEventListener('click', () => {             // Устанавливаем обработчик на конпку "Назад"
-            delHTMLForm(mainFormId);                                                    // Полностью удаляем форму выбора игры
+            delHTMLForm(mainFormId);                                                    // Полностью удаляем форму входа в игру
             w().user.stage = "selectGame";                                              // Выставляем текущий этап
             log.data.debug("Set user.stage: "+w().user.stage);
             core_selectGame_main();                                                     // Вызываем входную функцию модуля выбора игры
