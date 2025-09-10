@@ -297,6 +297,12 @@ public class Core extends AbstractVerticle {
                     .put("clientAddress", (String) msg.get("from"));
                 sendClientMessage((String) msg.get("game"),"getGameEntrance", resp);
                 break;
+            case "getGameSessions":                                         // Запрашиваем список доступных для подключения игровых сессий
+                resp.put("game", (String) msg.get("game"))
+                        .put("usid", (String) msg.get("usid"))
+                        .put("clientAddress", (String) msg.get("from"));
+                sendClientMessage((String) msg.get("game"),"getGameSessions", resp);
+                break;
             case "createNewGame":                                          // Запрашиваем новую игровую сессию у игрового вертикла
                 if (clientSessions.getGameId(uid) == null) {               // Проверяем участие игрока в другой игровой сессии
                     resp.put("game", (String) msg.get("game"))
@@ -336,6 +342,13 @@ public class Core extends AbstractVerticle {
                 }else {
                     sendClientMessage(from, "error", new JSONObject().put("action","error").put("text","You are not in game"));
                 }
+                break;
+            case "removeGameSession":                                           // Удаляем адрес игровой сессии из разрешений на сервере
+                resp.put("game", (String) msg.get("game"))
+                        .put("usid", uid)
+                        .put("gsid", (String) msg.get("gsid"))
+                        .put("clientAddress", (String) msg.get("from"));
+                sendClientMessage((String) msg.get("game"),"removeGameSession", resp);      // Отправляем сообщение игре о удалении игровой сессии
                 break;
             default:
                 log.error("Core::onClientMessage: unknown action "+action+" from client="+uid+", address="+from);
@@ -386,6 +399,13 @@ public class Core extends AbstractVerticle {
                 msg.remove("clientAddress");
                 msg.remove("usid");
                 sendClientMessage(clientAddress,"setGameEntrance", new JSONObject(msg));
+                break;
+            case "setGameSessions":                                         // Отправляем список игровых сессий клиенту
+                clientAddress = (String) msg.get("clientAddress");
+                msg.put("from", "core");
+                msg.remove("clientAddress");
+                msg.remove("usid");
+                sendClientMessage(clientAddress,"setGameSessions", new JSONObject(msg));
                 break;
             case "setGameSession":                                           // Отправляем игровую сессию клиенту
                 clientAddress = (String) msg.get("clientAddress");

@@ -1,7 +1,8 @@
 /* Модуль входа в игру Крестики-нолики */
 {
-let mainFormId = "TicTacToe_entrance";                          // Устанавливаем имя формы глобально в рамках модуля
-let selectedGame = {"gsid":null,"address":null,"name":null,"el":null}     // Хранилище параметров выбранной игры для подключения
+let mainFormId          = "TicTacToe_entrance";                                // Устанавливаем имя формы глобально в рамках модуля
+let selectedGame        = {"gsid":null,"address":null,"name":null,"el":null}   // Хранилище параметров выбранной игры для подключения
+w().user.onSessionsList = TicTacToe_entrance_onSessionsList;                   // Вешаем обработчик сообщений с обновлениями списка игровых сессий
 
 
 
@@ -152,12 +153,23 @@ function TicTacToe_entrance_listMaker(sessionsList){
     list.innerHTML = "";
 
     for(session in sessionsList){
-        item = srcItem.cloneNode(true);
-        item.children[0].innerHTML = sessionsList[session].name;
-        item.children[1].innerHTML = sessionsList[session].availableSeats+" / "+sessionsList[session].playersCount;
         let gmSid = sessionsList[session].gsid;
         let gmName = sessionsList[session].name;
         let gmAddress = sessionsList[session].address;
+
+        item = srcItem.cloneNode(true);
+        item.children[0].innerHTML = sessionsList[session].name;            // Указываем имя
+        item.children[1].innerHTML = sessionsList[session].availableSeats+" / "+sessionsList[session].playersCount;     // Указываем количество свободных и общее количество мест
+        if(sessionsList[session].owner === "true"){
+            item.children[2].innerHTML = " X ";                             // Если это владелец сессии, добавляем кнопку её удаления
+            item.children[2].addEventListener('click', () => {              // Устанавливаем обработчик на конпку "Удалить сессию"
+                log.debug("Send request to remove game session "+gmSid+" by address "+gmAddress);
+                sendMsg("core", "removeGameSession", {"game":"TicTacToe","gsid":gmSid});       // Отправляем запрос на удаление игровой сессии
+                sendMsg("core", "getGameSessions", {"game":"TicTacToe","gsid":gmSid});         // Отправляем запрос на обновление списка игровых сессий
+            });
+        }else{
+            item.children[2].innerHTML = " O ";
+        }
 
         item.addEventListener('click', function() {                                                      // Устанавливаем обработчик на выбор сессии в списке
                         selectedGame.gsid = gmSid;
@@ -176,5 +188,13 @@ function TicTacToe_entrance_listMaker(sessionsList){
     }
 
 }
+
+// Обработчик обновлений списка доступных игровых сессий
+function TicTacToe_entrance_onSessionsList(){
+    log.func.debug("TicTacToe_entrance_onSessionsList");
+
+    TicTacToe_entrance_listMaker(w().user.gameSessionsList);
+}
+
 
 }

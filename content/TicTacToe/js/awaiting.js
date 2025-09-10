@@ -22,7 +22,6 @@
                 w().user.stage = "selectGame";                                                   // Выставляем текущий этап как выбор игры
                 log.data.debug("Set user.stage: "+w().user.stage);
                 sendMsg("core", "getGameEntrance", {"game":"TicTacToe"});                        // Отправляем запрос на получение формы входа (в текущей реализации подругому мы не получим список сессий)
-//                TicTacToe_entrance_main();                                                       // Вызываем входную функцию модуля входа в игру
             });
         }
 
@@ -58,6 +57,23 @@
     function TicTacToe_awaiting_onGameMessage(msg){
         log.func.debug6("TicTacToe_awaiting_onGameMessage: msg: ", msg);
 
-
+        switch(msg.action) {
+            case "alert":                                                                       // Отображаем алерт
+                alert(msg.text);
+            break;
+            case "playerLeave":
+            break;
+            case "sessionRemoved":
+                alert(msg.reason);                                                               // Отображаем алерт с причиной удаления сессии
+                delHTMLForm(mainFormId);                                                         // Полностью удаляем форму входа в игру
+                w().user.stage = "selectGame";                                                   // Выставляем текущий этап как выбор игры
+                log.data.debug("Set user.stage: "+w().user.stage);
+                sendMsg("core", "getGameEntrance", {"game":"TicTacToe"});                        // Отправляем запрос на получение формы входа (в текущей реализации подругому мы не получим список сессий)
+            break;
+            default:
+                log.error("core_contentManager_onMessage: Unknown action: "+msg.action);
+                return;
+            break;
+        }
     }
 }

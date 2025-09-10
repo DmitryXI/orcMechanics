@@ -55,6 +55,7 @@ public class TicTacToe extends AbstractVerticle {
                     h -> {
                         HashMap<String, Object> doomeds = this.gameSessions.removeTheDead();
 
+                        // Здесь реализовать удаление сессий аналогично removeGameSession....
                         if (doomeds.size() > 0) {
                             doomeds.forEach((k, v) -> {
                                 eb.send("server", new JSONObject()
@@ -125,6 +126,7 @@ public class TicTacToe extends AbstractVerticle {
         String gsid    = (String) msg.get("gsid");                  // Идентификатор игровой сессии
         String gameAddress = null;                                  // Адрес игровой сессии
         ArrayList<HashMap<String, String>> players;                 // Список участников игры
+        HashMap<String, Object> waitingGames;
 
         if (uid == null){
             log.error(localAddress+"::onClientMessage: no usid field in body ("+msg.toString()+")");
@@ -135,55 +137,21 @@ public class TicTacToe extends AbstractVerticle {
 
         switch (action){
             case "getGameEntrance":                                                         // Отвечаем ядру на запрос формы входа
-
-                HashMap<String, Object> sessions = gameSessions.getSessions();
-                HashMap<String, Object> waitingGames = new HashMap<>();
-                HashMap<String, String> waitingGame;
-
-                for (String sid : sessions.keySet()){
-                    if (gameSessions.getStatus(sid).equals("waitingForPlayers")) {
-                        waitingGame = new HashMap<>();
-                        waitingGame.put("gsid", sid);
-                        waitingGame.put("address", gameSessions.getAddress(sid));
-                        waitingGame.put("name", gameSessions.getString(sid, "name"));
-                        waitingGame.put("playersCount", gameSessions.getInteger(sid, "playersCount").toString());
-                        waitingGame.put("availableSeats", gameSessions.getInteger(sid, "availableSeats").toString());
-                        if (gameSessions.getString(sid, "owner").equals(uid)) {
-                            waitingGame.put("owner", "true");
-                        }else {
-                            waitingGame.put("owner", "false");
-                        }
-
-                        waitingGames.put(sid, waitingGame);
-                    }
-                }
-
-//                waitingGame = new HashMap<>();
-//                waitingGame.put("gsid", "WR6IZJST78M0");
-//                waitingGame.put("address", "gmWR6IZJST78M0");
-//                waitingGame.put("name", "Поиграть 0");
-//                waitingGame.put("playersCount", "2");
-//                waitingGame.put("availableSeats", "1");
-//                waitingGames.put("WR6IZJST78M0", waitingGame);
-//                waitingGame = new HashMap<>();
-//                waitingGame.put("gsid", "WR6IZJST78M1");
-//                waitingGame.put("address", "gmWR6IZJST78M1");
-//                waitingGame.put("name", "Поиграть 1");
-//                waitingGame.put("playersCount", "3");
-//                waitingGame.put("availableSeats", "3");
-//                waitingGames.put("WR6IZJST78M1", waitingGame);
-//                waitingGame = new HashMap<>();
-//                waitingGame.put("gsid", "WR6IZJST78M2");
-//                waitingGame.put("address", "gmWR6IZJST78M2");
-//                waitingGame.put("name", "Поиграть 2");
-//                waitingGame.put("playersCount", "4");
-//                waitingGame.put("availableSeats", "2");
-//                waitingGames.put("WR6IZJST78M2", waitingGame);
+                waitingGames = getWaitingGamesSessions(uid, "waitingForPlayers");
 
                 sendClientMessage(from, "setGameEntrance", new JSONObject()
                         .put("appName","TicTacToe")
                         .put("moduleName","entrance")
                         .put("resourceId","TicTacToe/js/entrance")
+                        .put("clientAddress", (String) msg.get("clientAddress"))
+                        .put("usid", (String) msg.get("usid"))
+                        .put("sessionsList", waitingGames)
+                );
+                break;
+            case "getGameSessions":                                                         // Отвечаем ядру на запрос списка ожидающих сессий
+                waitingGames = getWaitingGamesSessions(uid, "waitingForPlayers");
+
+                sendClientMessage(from, "setGameSessions", new JSONObject()
                         .put("clientAddress", (String) msg.get("clientAddress"))
                         .put("usid", (String) msg.get("usid"))
                         .put("sessionsList", waitingGames)
@@ -397,6 +365,12 @@ public class TicTacToe extends AbstractVerticle {
                     gameSessions.setActivity(gsid);                                                                             // Обновляем время последней активности игры
                 }
                 break;
+            case "removeGameSession":                                                                                           // Обработка запроса на удаление игровой сессии
+                if (gameSessions.getString(gsid, "owner").equals(uid)) {
+                    log.debug(localAddress+"::onClientMessage: owner "+uid+" removed game session "+gsid);
+                    removeGameSession(gsid, "Owner removed game session");
+                }
+                break;
             default:
                 log.error(localAddress+"::onClientMessage: unknown action "+action+" from client="+uid+", address="+from);
                 sendClientMessage(from,"error", new JSONObject().put("text","unknown action "+action));
@@ -495,6 +469,32 @@ public class TicTacToe extends AbstractVerticle {
         }
 
         return null;
+    }
+
+    public HashMap<String, Object> getWaitingGamesSessions(String uid, String status){     // Взять список игровых сессий в заданном статусе (если передан валидный uid клиента, то проставить, где он владелец)
+
+        HashMap<String, Object> waitingGames = new HashMap<>();
+        HashMap<String, String> waitingGame;
+
+        for (String sid : gameSessions.getSessions().keySet()){
+            if (gameSessions.getStatus(sid).equals(status)) {
+                waitingGame = new HashMap<>();
+                waitingGame.put("gsid", sid);
+                waitingGame.put("address", gameSessions.getAddress(sid));
+                waitingGame.put("name", gameSessions.getString(sid, "name"));
+                waitingGame.put("playersCount", gameSessions.getInteger(sid, "playersCount").toString());
+                waitingGame.put("availableSeats", gameSessions.getInteger(sid, "availableSeats").toString());
+                if (gameSessions.getString(sid, "owner").equals(uid)) {
+                    waitingGame.put("owner", "true");
+                }else {
+                    waitingGame.put("owner", "false");
+                }
+
+                waitingGames.put(sid, waitingGame);
+            }
+        }
+
+        return waitingGames;
     }
 
     // Отправление шаблонного сообщения клиенту
