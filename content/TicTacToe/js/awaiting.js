@@ -23,6 +23,8 @@
                 log.data.debug("Set user.stage: "+w().user.stage);
                 sendMsg("core", "getGameEntrance", {"game":"TicTacToe"});                        // Отправляем запрос на получение формы входа (в текущей реализации подругому мы не получим список сессий)
             });
+
+            sendMsg(w().user.gameAddress, "getPlayersList", {"game":"TicTacToe","gsid":w().user.gsid}); // Отправляем запрос на создание игровой сессии с параметрами
         }
 
         TicTacToe_awaiting_showForm();                                                        // Показываем форму
@@ -51,8 +53,27 @@
         }
     }
 
+    function TicTacToe_awaiting_fillPlayersList(playersList){                           // Заполняем список игроков в форме
+        log.func.debug6("TicTacToe_awaiting_fillPlayersList: playersList: ", playersList);
 
+        if(mainForm !== null){
+            let list    = mainForm.getHTMLElement("list");                          // Элемент со списком
+            let srcItem = mainForm.getFormElement(1);                               // Шаблон элемента списка
+            let item;                                                               // Элемент списка
 
+            list.innerHTML = "";                                                    // Чистим список
+
+            for(playerNum in playersList){
+                item = srcItem.cloneNode(true);
+                item.children[0].innerHTML = playerNum;                             // Указываем номер по порядку
+                item.children[1].innerHTML = playersList[playerNum].name;           // Указываем имя
+                item.children[2].innerHTML = playersList[playerNum].type;           // Указываем тип игрока
+                item.children[3].innerHTML = playersList[playerNum].status;         // Указываем статус
+
+                list.appendChild(item);                                             // Добавляем HTML-элемент
+            }
+        }
+    }
 
     function TicTacToe_awaiting_onGameMessage(msg){
         log.func.debug6("TicTacToe_awaiting_onGameMessage: msg: ", msg);
@@ -62,6 +83,29 @@
                 alert(msg.text);
             break;
             case "playerLeave":
+                // Можно отобразить уведомление о отключении игрока...
+            break;
+            case "playersList":                                                                 // Заполняем/обновляем список игроков
+                TicTacToe_awaiting_fillPlayersList(msg.playersNames);
+            break;
+            case "startGame":                                                                   // Запускаем игру
+                TicTacToe_awaiting_fillPlayersList(msg.playersNames);                           // Для красоты заполняем список игроков
+                delHTMLForm(mainFormId);                                                        // Полностью удаляем форму входа в игру
+                log.info("Starting game");
+                if(msg.resourceId === undefined){ log.error("TicTacToe_awaiting_onGameMessage: recourceId not set"); return; }
+                if(msg.appName === undefined){ log.error("TicTacToe_awaiting_onGameMessage: appName not set"); return; }
+                if(msg.moduleName === undefined){ log.error("TicTacToe_awaiting_onGameMessage: moduleName not set"); return; }
+
+                if(loadScript(msg.resourceId)){                            // Синхронно подгружаем скрипт модуля непосредственно игры
+                    log.debug(msg.moduleName+" module loaded");
+                    let mainFunctionName = msg.appName+"_"+msg.moduleName+"_main";
+                    log.debug("Call "+mainFunctionName);
+                    if(window[mainFunctionName] instanceof Function){       // Вызываем входную функцию
+                        window[mainFunctionName]();
+                    }
+                }else{
+                    log.error("TicTacToe_awaiting_onGameMessage: Error loading starting game module");
+                }
             break;
             case "sessionRemoved":
                 alert(msg.reason);                                                               // Отображаем алерт с причиной удаления сессии
@@ -71,7 +115,7 @@
                 sendMsg("core", "getGameEntrance", {"game":"TicTacToe"});                        // Отправляем запрос на получение формы входа (в текущей реализации подругому мы не получим список сессий)
             break;
             default:
-                log.error("core_contentManager_onMessage: Unknown action: "+msg.action);
+                log.error("TicTacToe_awaiting_onGameMessage: Unknown action: "+msg.action);
                 return;
             break;
         }

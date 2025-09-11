@@ -186,7 +186,6 @@ function TicTacToe_entrance_listMaker(sessionsList){
 
         list.appendChild(item);
     }
-
 }
 
 // Обработчик обновлений списка доступных игровых сессий

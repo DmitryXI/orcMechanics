@@ -126,7 +126,8 @@ public class TicTacToe extends AbstractVerticle {
         String gsid    = (String) msg.get("gsid");                  // Идентификатор игровой сессии
         String gameAddress = null;                                  // Адрес игровой сессии
         ArrayList<HashMap<String, String>> players;                 // Список участников игры
-        HashMap<String, Object> waitingGames;
+        ArrayList<HashMap<String, String>> playersNames;            // Список имён участников для рассылки
+        HashMap<String, Object> waitingGames;                       // Список ...
 
         if (uid == null){
             log.error(localAddress+"::onClientMessage: no usid field in body ("+msg.toString()+")");
@@ -285,11 +286,6 @@ public class TicTacToe extends AbstractVerticle {
                     }
                 }
 
-                ArrayList<String> playersNames = new ArrayList<>();
-                for (HashMap<String, String> player : players){
-                    playersNames.add((String) player.get("name"));
-                }
-
                 sendClientMessage(from, "setGameSession", new JSONObject()                        // Отправляем сессию игроку (комплектом данные для подключения модуля)
                         .put("gameAddress", gameSessions.getAddress(gsid))
                         .put("clientAddress", (String) msg.get("clientAddress"))
@@ -303,11 +299,11 @@ public class TicTacToe extends AbstractVerticle {
 
                 Integer nn = 0;
                 Boolean youTurn = false;
-                if (gameSessions.getStatus(gsid).equals("ready")) {                                      // Если сбор участников завершён, рассылаем команду на старт людям
-//System.out.println("Game ready");
-                    for (HashMap<String, String> player : players){
-                        if (player.get("type").equals("human")){
-//System.out.println("Player is human");
+                playersNames = getPlayersList(gsid);
+
+                for (HashMap<String, String> player : players){                                     // Рассылаем обновление списка участников
+                    if (gameSessions.getStatus(gsid).equals("ready")) {                                      // Если сбор участников завершён, рассылаем команду на старт
+                        if (player.get("type").equals("human") && (player.get("csid") != null)){
                             if (nn == gameSessions.getInteger(gsid, "turnOf")) {
                                 youTurn = true;
                             }else {
@@ -320,18 +316,31 @@ public class TicTacToe extends AbstractVerticle {
                                     .put("youTurn", youTurn)
                                     .put("youNum", nn)
                                     .put("playersNames", playersNames)
+                                    .put("appName","TicTacToe")
+                                    .put("moduleName","battlefield")
+                                    .put("resourceId","TicTacToe/js/battlefield")
                             );
                         }
                         nn++;
+                    }else {                             // Если собраны не все, только обновляем список участников
+                        if (player.get("type").equals("human") && (player.get("csid") != null)){
+//                            System.out.println("Send players to: "+(String) player.get("clientAddress"));
+                            sendGameMessage((String) player.get("clientAddress"), gameSessions.getAddress(gsid), "playersList", new JSONObject()
+                                    .put("gsid", gsid)
+                                    .put("gameAddress", gameSessions.getAddress(gsid))
+                                    .put("playersNames", playersNames)
+                            );
+                        }
                     }
                 }
 
                 gameSessions.setActivity(gsid);
 
                 break;
-            case "leaveGame":                                                                                              // Обработка запроса на выход из игры
+            case "leaveGame":                                                                                   // Обработка запроса на выход из игры
                 gameAddress = gameSessions.getAddress(gsid);
                 HashMap<String, String> player = getPlayerByUid(uid, gsid);
+                players = gameSessions.getPlayers(gsid);
 
                 if (player == null) {
                     log.debug(localAddress+"::onClientMessage: player "+uid+" not in game "+gsid);
@@ -353,7 +362,7 @@ public class TicTacToe extends AbstractVerticle {
 
                     gameSessions.setValue(gsid, "availableSeats", gameSessions.getInteger(gsid, "availableSeats")+1);
 
-                    player.put("csid", null);               // Очмщаем участника от данных отключенного игрока
+                    player.put("csid", null);               // Очищаем участника от данных отключенного игрока
                     player.put("clientAddress", null);
                     player.put("name", null);
                 }
@@ -363,6 +372,16 @@ public class TicTacToe extends AbstractVerticle {
                     removeGameSession(gsid, "All players leave the game");
                 }else {
                     gameSessions.setActivity(gsid);                                                                             // Обновляем время последней активности игры
+                    playersNames = getPlayersList(gsid);
+                    for (HashMap<String, String> cPlayer2 : players){                                     // Рассылаем обновление списка участников
+                        if (cPlayer2.get("type").equals("human") && (cPlayer2.get("csid") != null)){
+                            sendGameMessage((String) cPlayer2.get("clientAddress"), gameSessions.getAddress(gsid), "playersList", new JSONObject()
+                                    .put("gsid", gsid)
+                                    .put("gameAddress", gameSessions.getAddress(gsid))
+                                    .put("playersNames", playersNames)
+                            );
+                        }
+                    }
                 }
                 break;
             case "removeGameSession":                                                                                           // Обработка запроса на удаление игровой сессии
@@ -414,9 +433,17 @@ public class TicTacToe extends AbstractVerticle {
         }
 
         switch (action){
+            case "getPlayersList":                                                              // Запрос писка участников игровой сессии
+                ArrayList<HashMap<String, String>> playersNames = getPlayersList(gsid);
+                sendGameMessage(from, gameAddress, "playersList", new JSONObject()
+                        .put("gsid", gsid)
+                        .put("gameAddress", gameAddress)
+                        .put("playersNames", playersNames)
+                );
+                break;
             default:
                 log.debug(localAddress+"::onClientMessage: unknown action: "+action);
-                sendClientMessage(from, "error", new JSONObject().put("text", "unknown action: "+action));
+                sendGameMessage(from, gameAddress,"error", new JSONObject().put("text", "unknown action: "+action));
         }
     }
 
@@ -446,7 +473,32 @@ public class TicTacToe extends AbstractVerticle {
         return true;
     }
 
-    // Получение списка адресов всех игроков сессии (для массовой рассылки)
+    // Получение списка всех участников сессии (для рассылки на события подключения/отключения игроков)
+    public ArrayList<HashMap<String, String>> getPlayersList(String gsid){
+
+        ArrayList<HashMap<String, String>> res = new ArrayList<>();
+
+        for (HashMap<String, String> player : gameSessions.getPlayers(gsid)){
+            HashMap<String, String> item = new HashMap<>();
+            if (((player.get("csid") != null) && (player.get("clientAddress") != null)) || (((String) player.get("type")).equals("ai"))){
+                item.put("number", (String) player.get("number"));
+                item.put("name", (String) player.get("name"));
+                item.put("type", (String) player.get("type"));
+                item.put("status", "ready");
+            }else {
+                item.put("number", (String) player.get("number"));
+                item.put("name", (String) player.get("name"));
+                item.put("type", (String) player.get("type"));
+                item.put("status", "waiting");
+            }
+
+            res.add(item);
+        }
+
+        return res;
+    }
+
+    // Получение списка адресов всех активных игроков сессии (для массовой рассылки)
     public HashMap<String, String> getPlayersAdresses(String gsid){
 
         HashMap<String, String> res = new HashMap<>();

@@ -29,14 +29,42 @@
         #${id}_back:hover {
             cursor: pointer;
         }
+        #${id}_title {
+            border: solid 1px;
+            padding: 5px;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        #${id}_list {
+            border: float;
+            padding: 5px;
+            text-align: left;
+            margin-top: 10px;
+        }
+        .${id}_item {
+            padding: 5px;
+            text-align: left;
+            margin-bottom: 5px;
+            display: table;
+        }
+        .${id}_item div{
+            display: table-cell;
+            padding-right: 10px;
+            margin: 5px;
+        }
     </style>
     <div id="${id}_menuHeader">
         <div id="${id}_back">&lt;</div>
         <div style="display: flex; flex: 1; justify-content: center;">Крестики-нолики</div>
     </div>
     <div id="${id}_main_block">
-            <div class="${id}_title">Ожидание игроков</div>
-            <div class="${id}_list">Список игроков</div>
+            <div id="${id}_title">Ожидание игроков</div>
+            <div id="${id}_list">Список игроков</div>
     </div>
 </div>
-<div class="${id}_item">Информация о участнике...</div>
+<div class="${id}_item">
+    <div>nn</div>
+    <div>name</div>
+    <div>type</div>
+    <div>status</div>
+</div>
