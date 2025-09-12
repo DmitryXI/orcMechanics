@@ -155,6 +155,31 @@ public class ClientSessionsManager extends SessionsManager {
         return false;
     }
 
+    // Получить имя игры
+    public String getGame(String uid){
+
+        HashMap<String, Object> ses = getSession(uid);
+
+        if (ses != null) {
+            return (String) ses.get("game");
+        }
+
+        return null;
+    }
+
+    // Установить имя игры
+    public boolean setGame(String uid, String game){
+
+        HashMap<String, Object> ses = getSession(uid);
+
+        if (ses != null) {
+            ses.put("game", game);
+            return true;
+        }
+
+        return false;
+    }
+
     // Удаление просроченных клиентских сессий
     @Override
     public HashMap<String, Object> removeTheDead(){

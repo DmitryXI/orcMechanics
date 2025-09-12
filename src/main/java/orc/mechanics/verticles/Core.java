@@ -277,6 +277,13 @@ public class Core extends AbstractVerticle {
         clientSessions.setActivity(uid);                                    // Обновляем время последней активности клиентской сессии
 
         JSONObject resp = new JSONObject();
+        String gid = clientSessions.getGameId(uid);
+
+        if ((gid != null) && (!action.equals("leaveGame")) && (!action.equals("removeGameSession"))) { // Проверяем участие игрока в ожидающей/запущенной игре (если есть, отправляем запрос на подключение)
+            returnClientToGame(uid, gid, from, (String) ses.get("game"));
+            System.out.println("Need return client to session "+gid);
+            return;
+        }
 
         switch (action){
             case "setPlayerName":
@@ -377,6 +384,8 @@ public class Core extends AbstractVerticle {
         JSONObject resp = new JSONObject();
         String clientAddress = null;
         String uid = null;
+        String gid = null;
+        HashMap<String, Object> ses = null;
 
         switch (action){
             case "error":                                                   // Ретранслируем сообщение об ошибке
@@ -386,7 +395,7 @@ public class Core extends AbstractVerticle {
                 msg.remove("usid");
                 sendClientMessage(clientAddress,"error", new JSONObject(msg));
                 break;
-            case "alert":                                                   // Ретранслируем сообщение об ошибке
+            case "alert":                                                   // Ретранслируем предупреждение
                 clientAddress = (String) msg.get("clientAddress");
                 msg.put("from", "core");
                 msg.remove("clientAddress");
@@ -414,6 +423,7 @@ public class Core extends AbstractVerticle {
                 msg.remove("clientAddress");
                 msg.remove("usid");
                 clientSessions.setGameId(uid, (String) msg.get("gsid"));
+                clientSessions.setGame(uid, (String) msg.get("appName"));
                 sendClientMessage(clientAddress,"setGameSession", new JSONObject(msg));
                 break;
             case "newGameSession":                                           // Добавляем адрес игровой сессии в разрешения на сервере
@@ -426,6 +436,7 @@ public class Core extends AbstractVerticle {
                     String cGameId = (String) cSes.get("gsid");
                     if ((cGameId != null) && (cGameId.equals((String) msg.get("gsid")))) {
                         cSes.put("gsid", null);
+                        cSes.put("game", null);
                     }
                 }
 
@@ -433,10 +444,38 @@ public class Core extends AbstractVerticle {
                 msg.put("action", "removeAddress");
                 sendClientMessage("server","removeAddress", new JSONObject(msg));
                 break;
+            case "notInGame":                                           // Удаляем адрес игровой сессии из клиентской сессии, если игра нам сказала, что такого лиента в игровой сессии нет
+                uid = (String) msg.get("usid");
+                gid = (String) msg.get("gsid");
+                ses = clientSessions.getSession(uid);
+
+                if (ses == null){
+                    clientAddress = (String) ses.get("address");
+
+                    if (((String) ses.get("game")).equals((String) msg.get("game")) && ((String) ses.get("gsid")).equals(gid)) {
+                        ses.put("game", null);
+                        ses.put("gsid", null);
+                    }
+                    sendClientMessage(clientAddress,"error", new JSONObject().put("text", "You are not in game: "+(String) msg.get("game")+"::"+gid));
+                }
+                break;
             default:
                 log.error("Core::onGamesMessage: unknown action "+action+" from game "+from);
 //                sendClientMessage(from,"error", new JSONObject().put("text","unknown action "+action));
         }
+    }
+
+    // Возвращение в игру отвалившегося клиента
+    public void returnClientToGame(String uid, String gid, String clientAddress, String game){
+
+        sendClientMessage(game, "joinToGame", new JSONObject()
+                .put("from", "core")
+                .put("game", game)
+                .put("gsid", gid)
+                .put("usid", uid)
+                .put("clientAddress", clientAddress)
+                .put("return", true)
+        );
     }
 
     // Отправление шаблонного сообщения клиенту

@@ -256,6 +256,29 @@ public class TicTacToe extends AbstractVerticle {
                     return;
                 }
 
+                if (msg.get("return") != null) {                                        // Переподключаем отвалившегося клиента
+                    HashMap<String, String> player = getPlayerByUid(uid, gsid);
+
+                    if (player == null) {
+                        sendClientMessage(from, "notInGame", new JSONObject()
+                                .put("usid", uid)
+                                .put("gsid", gsid)
+                                .put("game", "TicTacToe")
+                                .put("clientAddress", (String) msg.get("clientAddress"))
+                        );
+                        return;
+                    }
+
+                    // Если игра в статусе awaiting, то сделать всю математику и отправить сессию с модулем awaiting
+                    // Если игра в статусе ready, то сделать всю математику и отправить сессию с модулем battlefield
+
+                    // Для первого варианта nn взять из player.get("number")
+                    // Для второго варианта youTurn вычислить из player.get("number") и gameSessions.getInteger(gsid, "turnOf")
+                    // Так же в обоих случаях вернуть имя игрока (на клиенте в обработке restoreSession сделать восстановление имени из playerName)
+
+                    return;
+                }
+
                 if (!gameSessions.getStatus(gsid).equals("waitingForPlayers")) {                                // Если статус сессии отличается от "ожидание игроков"
                     log.debug(localAddress+"::onClientMessage: no waiting players in session gsid: "+gsid);
 

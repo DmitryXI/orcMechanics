@@ -176,6 +176,10 @@ public class Server extends AbstractVerticle {
 //                System.out.println("Received RECEIVE from address "+event.getRawMessage().getString("address"));
 //                System.out.println(event.getRawMessage().toString());
                 break;
+            case SOCKET_IDLE:                   // Отрицательно завершаем событие с предложением закрыть сокет по таймауту
+                System.out.println("Received SOCKET_IDLE from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
+                event.complete(false);
+                return;
             default:
                 System.out.println("Received unexpected "+event.type()+" from "+event.socket().remoteAddress().host()+":"+event.socket().remoteAddress().port());
         }

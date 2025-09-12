@@ -51,7 +51,8 @@ function core_requestName_showRequestNameForm(parentId=null){
 // Создатель формы входа на базе сырого HTML
 // Вообще он здесь не нужен (хватит и предустановленного в ядре, но просто... для теста)
 function core_requestName_cooker(srcHtml, formId, anyText){
-    log.func.debug6("core.core_requestName_cooker: srcHtml: "+srcHtml+", formId: "+formId);
+//    log.func.debug6("core.core_requestName_cooker: srcHtml: "+srcHtml+", formId: "+formId);
+    log.func.debug6("core.core_requestName_cooker(srcHtml, formId, anyText)", srcHtml, formId, anyText);
 
     let html = srcHtml.replaceAll("${id}", formId).replaceAll("${z}", 1);
     let elements = getElementsFromHTML(html);

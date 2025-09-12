@@ -99,41 +99,44 @@ function getWorkSize() {
 
 
 // Сохранение/отображение/отправка отладочных сообщений
-function Logger(logLevel=8, printStack=false, toConsole=true, toStorage=false) {
-    this.logLevel = Number(logLevel);
-    this.printStack = printStack;
-    this.toConsole = toConsole;
-    this.toStorage = toStorage;
-    this.tagList = {};
-    this.logStorage = [];
-    this.storLimit = 3000;                  // Сколько последних сообщений хранить в хранилище
+function Logger(logLevel=8, showParams=true, printStack=false, toConsole=true, toStorage=false) {
+    this.logLevel = Number(logLevel);               // Уровень принятия логов (0 - 8)
+    this.showParams = Boolean(showParams);          // Принятие/Непринятие параметров
+    this.printStack = printStack;                   // Выводить stackTrace или нет (применяется только на уровнях 0 и 1)
+    this.toConsole = toConsole;                     // Выводить логи в консоль или нет (возможно, позже добавлю вывод в body или спец.элемент)
+    this.toStorage = toStorage;                     // Сохранять логи в памяти или нет
+    this.tagList = {};                              // Список тэгов (с индивидуальными уровнями логирования и флагами обработки параметров)
+    this.logStorage = [];                           // Хранилище логов в памяти
+    this.storLimit = 3000;                          // Сколько последних сообщений хранить в хранилище
 
-    this.fatal   = function (message, obj=null) { this.log(message, obj, 1); },
-    this.error   = function (message, obj=null) { this.log(message, obj, 2); },
-    this.warn    = function (message, obj=null) { this.log(message, obj, 3); },
-    this.info    = function (message, obj=null) { this.log(message, obj, 4); },
-    this.debug   = function (message, obj=null) { this.log(message, obj, 5); },
-    this.debug6  = function (message, obj=null) { this.log(message, obj, 6); },
-    this.debug7  = function (message, obj=null) { this.log(message, obj, 7); },
-    this.debug8  = function (message, obj=null) { this.log(message, obj, 8); },
+    this.fatal  = function (message, ...objects) { this.log(message, objects, 1); };
+    this.error  = function (message, ...objects) { this.log(message, objects, 2); };
+    this.warn   = function (message, ...objects) { this.log(message, objects, 3); };
+    this.info   = function (message, ...objects) { this.log(message, objects, 4); };
+    this.debug  = function (message, ...objects) { this.log(message, objects, 5); };
+    this.debug6 = function (message, ...objects) { this.log(message, objects, 6); };
+    this.debug7 = function (message, ...objects) { this.log(message, objects, 7); };
+    this.debug8 = function (message, ...objects) { this.log(message, objects, 8); };
+
 
     // Добавление тэга к в логер
-    this.addTag = function (tag, logLevel=null){
+    this.addTag = function (tag, logLevel=null, showParams=null){
         if(typeof tag === "string"){
             let uTag = tag.toUpperCase();
             let lTag = tag.toLowerCase();
             if((this.tagList[uTag] === undefined) || (this.tagList[uTag] === null)){
-                if(logLevel === null) { logLevel = this.logLevel; }
-                this.tagList[uTag] = Number(logLevel);
+                if(logLevel   === null) { logLevel   = this.logLevel; }
+                if(showParams === null) { showParams = this.showParams; }
+                this.tagList[uTag] = {"logLevel":Number(logLevel), "showParams":Boolean(showParams)};
                 this[lTag] = {
-                    "fatal"  : function (message, obj=null) { this.logger.log(message, obj, 1, uTag); },
-                    "error"  : function (message, obj=null) { this.logger.log(message, obj, 2, uTag); },
-                    "warn"   : function (message, obj=null) { this.logger.log(message, obj, 3, uTag); },
-                    "info"   : function (message, obj=null) { this.logger.log(message, obj, 4, uTag); },
-                    "debug"  : function (message, obj=null) { this.logger.log(message, obj, 5, uTag); },
-                    "debug6" : function (message, obj=null) { this.logger.log(message, obj, 6, uTag); },
-                    "debug7" : function (message, obj=null) { this.logger.log(message, obj, 7, uTag); },
-                    "debug8" : function (message, obj=null) { this.logger.log(message, obj, 8, uTag); },
+                    "fatal"  : function (message, ...objects) { this.logger.log(message, objects, 1, uTag); },
+                    "error"  : function (message, ...objects) { this.logger.log(message, objects, 2, uTag); },
+                    "warn"   : function (message, ...objects) { this.logger.log(message, objects, 3, uTag); },
+                    "info"   : function (message, ...objects) { this.logger.log(message, objects, 4, uTag); },
+                    "debug"  : function (message, ...objects) { this.logger.log(message, objects, 5, uTag); },
+                    "debug6" : function (message, ...objects) { this.logger.log(message, objects, 6, uTag); },
+                    "debug7" : function (message, ...objects) { this.logger.log(message, objects, 7, uTag); },
+                    "debug8" : function (message, ...objects) { this.logger.log(message, objects, 8, uTag); },
                 };
                 this[lTag].logger = this;
             }
@@ -169,13 +172,15 @@ function Logger(logLevel=8, printStack=false, toConsole=true, toStorage=false) {
     }
 
     // Приём и обработка логов
-    this.log = function (message, obj=null, importance, tag=null){
+    this.log = function (message, objects=[], importance, tag=null){
         importance = Number(importance)
 
-        let logLevel = this.logLevel;
+        let logLevel   = this.logLevel;
+        let showParams = this.showParams;
 
         if((this.tagList[tag] !== undefined) && (this.tagList[tag] !== null)){
-            logLevel = this.tagList[tag];
+            logLevel   = this.tagList[tag].logLevel;
+            showParams = this.tagList[tag].showParams;
             tag += " ";
         }else{ tag = ""; }
 
@@ -206,11 +211,21 @@ function Logger(logLevel=8, printStack=false, toConsole=true, toStorage=false) {
                 this.logStorage.shift();
             }
 
+            let obj = null;
+
+            if(showParams){                         // Паримся с доп.параметрами, только если стоит флаг их обрабатывать
+                if(objects.length === 1){
+                    obj = objects[0];
+                } else if (objects.length > 1){
+                    obj = objects;
+                }
+            }
+
             if(obj !== null){
-                if(this.toConsole){ console.log([importanceText+": "+message+": "+JSON.stringify(obj), obj]); }
+                if(this.toConsole){ console.log([importanceText+": "+message+": "+JSON.stringify(obj).substring(0, 220-message.length), obj]); }
                 if(this.toStorage){ this.logStorage.push(importanceText+": "+message+": "+JSON.stringify(obj)); }
             }else if(typeof message === "object"){
-                if(this.toConsole){ console.log([importanceText+": "+JSON.stringify(message), message]); }
+                if(this.toConsole){ console.log([importanceText+": "+JSON.stringify(message).substring(0, 220), message]); }
                 if(this.toStorage){ this.logStorage.push(importanceText+": "+JSON.stringify(message)); }
             }else{
                 if(this.toConsole){ console.log(importanceText+": "+message); }
@@ -446,7 +461,8 @@ function addScript(resp, error, scriptId){
 // Добавляет в документ форму на основании контента по id ресурса (если нужно, загружает с сервера).
 // resizeParams - параметры для обработчика onResize, cook - колбэк-функция-обработчик сырого контента, cookParams - параметры для функции cook
 function addHTMLForm(contentId, formId, resizeParams=[], cook=null, cookParams=[]){
-    log.func.debug("core.addHTMLForm: contentId: "+contentId+", formId: "+formId+", resizeParams: "+resizeParams+", cook: "+cook+", cookParams: "+cookParams);
+//    log.func.debug("core.addHTMLForm: contentId: "+contentId+", formId: "+formId+", resizeParams: "+resizeParams+", cook: "+cook+", cookParams: "+cookParams);
+    log.func.debug("core.addHTMLForm(contentId, formId, resizeParams=[], cook=null, cookParams=[])", contentId, formId, resizeParams, cook, cookParams);
 
     if((w().forms[formId] === null) || (w().forms[formId] === undefined)){                      // Проверяем наличие формы в хранилище форм
         log.func.debug6("core.addHTMLForm: Requested content for form with contentId: "+contentId);

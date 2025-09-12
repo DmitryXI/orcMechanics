@@ -14,7 +14,7 @@ window.vars = {
     "baseRequestHeaders": null   // Заголовки POST-запросов используемые по умолчанию, при запросе контента
 };
 
-w().logger = new Logger(5, false, true, true);      // Создаём логер
+w().logger = new Logger(5, true, false, true, true);      // Создаём логер
 var log = w().logger;
 log.addTag("msg", 8);            // Добавляем тэг для фильтрации журналов сообщений        (сообщения)
 log.addTag("form", 8);           // Добавляем тэг для фильтрации журналов работы с формами (события HTML-форм)
