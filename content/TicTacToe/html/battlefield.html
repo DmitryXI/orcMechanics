@@ -1,0 +1,39 @@
+// Основная форма и стиль игрового поля
+<div id="${id}">
+    <style>
+        #body {
+            padding 0px;
+            margin: 0px;
+        }
+        #${id} {
+            position:relative;
+            z-index:${z};
+            border: 0px;
+            padding 0px;
+            margin: 0px;
+        }
+        #${id}_menuHeader {
+            display: flex;
+            width: 100%;
+            font-size: 20px;
+            background-color: #CCC;
+            text-align: right;
+            padding: 0px;
+            padding-top: 5px;
+            padding-bottom: 5px;
+            cursor: default;
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none; /* Safari */
+            -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Old versions of Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently */
+        }
+    </style>
+    <div id="${id}_menuHeader">
+        <div style="display: flex; flex: 1; justify-content: flex-end;">Меню игры...</div>
+    </div>
+    <div id="${id}_main_block">
+        По идее на канве этого дива и рисовать... ну или вместо дива здесь должна быть канва...
+    </div>
+</div>

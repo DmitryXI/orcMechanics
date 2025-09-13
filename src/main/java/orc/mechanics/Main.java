@@ -4,7 +4,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import orc.mechanics.verticles.Core;
 import orc.mechanics.verticles.Server;
-import orc.mechanics.games.TicTacToe;
+import orc.mechanics.games.TicTacToe.TicTacToe;
 
 
 public class Main {

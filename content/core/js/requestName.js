@@ -1,9 +1,6 @@
 /* Модуль формы входа */
 {
-
-// Вызываем стартовую функцию
-//core_requestName_main();
-
+let mainFormId = "core_requestName";                     // Устанавливаем имя формы глобально в рамках модуля
 
 function core_requestName_main(){
 
@@ -38,6 +35,10 @@ function core_requestName_showRequestNameForm(parentId=null){
     if(!(parent instanceof HTMLElement)){
         log.error("Can't get parent element with id "+parentId);
         return;
+    }
+
+    if(w().user.name !== null){                                         // Если имя игрока уже задано, заполняем форму
+        f(mainFormId).getHTMLElement("login").value = w().user.name;
     }
 
     if(d("core_requestName", parent) === null){

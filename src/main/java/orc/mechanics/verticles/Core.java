@@ -286,6 +286,15 @@ public class Core extends AbstractVerticle {
         }
 
         switch (action){
+            case "getUserEntrance":                                         // Запрашиваем форму входа/аутентификации пользователя
+                sendClientMessage(from,"setUserEntrance", new JSONObject()
+                        .put("appName","core")
+                        .put("moduleName","requestName")
+                        .put("resourceId","core/js/requestName")
+                        .put("usid", uid)
+                        .put("clientAddress", clientSessions.getAddress(uid))
+                );
+                break;
             case "setPlayerName":
                 ses.put("playerName", (String) (msg.get("name")));
                 sendClientMessage(from, "setPlayerName", new JSONObject().put("name", (String) ses.get("playerName")));
@@ -298,7 +307,7 @@ public class Core extends AbstractVerticle {
                 });
                 sendClientMessage(from,"setGamesList", resp);
                 break;
-            case "getGameEntrance":                                         // Запрашиваем форму входа для любой игры транзитом через core для контроля сессий и любого другого контроля
+            case "getGameEntrance":                                         // Запрашиваем форму входа/аутентификации
                 resp.put("game", (String) msg.get("game"))
                     .put("usid", (String) msg.get("usid"))
                     .put("clientAddress", (String) msg.get("from"));
@@ -332,6 +341,17 @@ public class Core extends AbstractVerticle {
                     sendClientMessage((String) msg.get("game"),"joinToGame", resp);
                 }else {
                     sendClientMessage(from, "error", new JSONObject().put("action","error").put("text","You already in game"));
+                }
+                break;
+            case "checkGameStatus":                                                   // Проверяем статус игры (если уже началась, отправляем на старт)
+                if (clientSessions.getGameId(uid) != (String) msg.get("gsid")) {      // Проверяем участие игрока в другой игровой сессии
+                    resp.put("game", (String) msg.get("game"))
+                            .put("usid", uid)
+                            .put("gsid", (String) msg.get("gsid"))
+                            .put("clientAddress", (String) msg.get("from"));
+                    sendClientMessage((String) msg.get("game"),"checkGameStatus", resp);
+                }else {
+                    sendClientMessage(from, "error", new JSONObject().put("action","error").put("text","You already in other game"));
                 }
                 break;
             case "leaveGame":                                              // Пытаемся удалить клиента из игры
@@ -426,6 +446,16 @@ public class Core extends AbstractVerticle {
                 clientSessions.setGame(uid, (String) msg.get("appName"));
                 sendClientMessage(clientAddress,"setGameSession", new JSONObject(msg));
                 break;
+            case "returnGameSession":                                           // Возвращаем игровую сессию клиенту
+                clientAddress = (String) msg.get("clientAddress");
+                uid = (String) msg.get("usid");
+                msg.put("from", "core");
+                msg.remove("clientAddress");
+                msg.remove("usid");
+                clientSessions.setGameId(uid, (String) msg.get("gsid"));
+                clientSessions.setGame(uid, (String) msg.get("appName"));
+                sendClientMessage(clientAddress,"returnGameSession", new JSONObject(msg));
+                break;
             case "newGameSession":                                           // Добавляем адрес игровой сессии в разрешения на сервере
                 msg.put("from", "core");
                 sendClientMessage("server","newGameSession", new JSONObject(msg));
@@ -444,7 +474,7 @@ public class Core extends AbstractVerticle {
                 msg.put("action", "removeAddress");
                 sendClientMessage("server","removeAddress", new JSONObject(msg));
                 break;
-            case "notInGame":                                           // Удаляем адрес игровой сессии из клиентской сессии, если игра нам сказала, что такого лиента в игровой сессии нет
+            case "notInGame":                                           // Удаляем адрес игровой сессии из клиентской сессии, если игра нам сказала, что такого клиента в игровой сессии нет
                 uid = (String) msg.get("usid");
                 gid = (String) msg.get("gsid");
                 ses = clientSessions.getSession(uid);

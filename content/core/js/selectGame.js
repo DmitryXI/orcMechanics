@@ -17,6 +17,10 @@ function core_selectGame_main(){
             log.data.debug("Set user.stage: "+w().user.stage);
             core_requestName_main();                                                    // Вызываем входную функцию модуля запроса имени
         });
+
+        if(w().user.gamesList === null){                                                // Если форма не загружена и список игр пуст, скорее всего было обновление страницы и его стоит загрузить
+            sendMsg("core", "getGamesList");
+        }
     }else{
         selGameFrm = f(mainFormId);
     }

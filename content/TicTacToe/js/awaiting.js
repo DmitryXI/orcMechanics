@@ -13,18 +13,19 @@
             delHTMLForm("TicTacToe_entrance");                                              // Полностью удаляем форму входа в игру
             d("body").innerHTML = "";                                                       // Для порядка обнуляем содержимое body
 
-            mainForm.getHTMLElement("back").addEventListener('click', () => {                    // Устанавливаем обработчик на конпку "Назад"
-                sendMsg("core", "leaveGame", {                                                  // Отправляем сообщение серверу о выходе из игры
+            mainForm.getHTMLElement("back").addEventListener('click', () => {               // Устанавливаем обработчик на конпку "Назад"
+                sendMsg("core", "leaveGame", {                                              // Отправляем сообщение серверу о выходе из игры
                     "game":"TicTacToe",
                     "gsid":w().user.gsid
                 });
-                delHTMLForm(mainFormId);                                                         // Полностью удаляем форму входа в игру
-                w().user.stage = "selectGame";                                                   // Выставляем текущий этап как выбор игры
+                delHTMLForm(mainFormId);                                                    // Полностью удаляем форму входа в игру
+                w().user.stage = "selectGame";                                              // Выставляем текущий этап как выбор игры
                 log.data.debug("Set user.stage: "+w().user.stage);
-                sendMsg("core", "getGameEntrance", {"game":"TicTacToe"});                        // Отправляем запрос на получение формы входа (в текущей реализации подругому мы не получим список сессий)
+                sendMsg("core", "getGameEntrance", {"game":"TicTacToe"});                   // Отправляем запрос на получение формы входа (в текущей реализации подругому мы не получим список сессий)
             });
 
-            sendMsg(w().user.gameAddress, "getPlayersList", {"game":"TicTacToe","gsid":w().user.gsid}); // Отправляем запрос на создание игровой сессии с параметрами
+            sendMsg(w().user.gameAddress, "getPlayersList", {"game":"TicTacToe","gsid":w().user.gsid}); // Отправляем запрос списка имён игроков
+            sendMsg("core", "checkGameStatus", {"game":"TicTacToe","gsid":w().user.gsid});              // Отправляем запрос статуса игры (если уже началась, ожидаем команду на старт в ответ)
         }
 
         TicTacToe_awaiting_showForm();                                                        // Показываем форму

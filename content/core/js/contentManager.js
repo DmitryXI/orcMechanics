@@ -12,12 +12,7 @@ function core_contentManager_main() {
         w().user.stage = "entrance";
         log.data.debug("Set user.stage: "+w().user.stage);
 
-        if(loadScript("core/js/requestName")){                                               // Синхронно подгружаем скрипт модуля формы входа
-            log.debug("requestName module loaded");
-            core_requestName_main();                                                         // Вызываем входную функцию модуля
-        }else{
-            log.error("core_contentManager_main: Error loading requestName module");
-        }
+        sendMsg("core", "getUserEntrance");                                                    // Запрашиваем форму входа/аутентификации пользователя
     }
 }
 
@@ -33,6 +28,22 @@ function core_contentManager_onMessage(msg){
     switch(msg.action) {
       case "alert":                                                     // Отображаем алерт
         alert(msg.text);
+        break;
+      case "setUserEntrance":                                           // Принимаем модуль входа пользователя
+         if(w().user.stage = "entrance"){                               // Если это на этапе entrance, то удаляем форму входа и подгружаем форму выбора игры
+            if(loadScript(msg.resourceId)){                             // Синхронно подгружаем скрипт модуля формы входа пользователя
+                log.debug(msg.moduleName+" module loaded");
+                let mainFunctionName = msg.appName+"_"+msg.moduleName+"_main";
+                log.debug("Call "+mainFunctionName);
+                if(window[mainFunctionName] instanceof Function){       // Вызываем входную функцию
+                    window[mainFunctionName]();
+                }
+            }else{
+                log.error("core_contentManager_onMessage: Error loading user entrance module");
+            }
+         }else{
+            log.error("core_contentManager_onMessage: Unexpected action "+msg.action+" on current stage "+w().user.stage);
+         }
         break;
       case "setPlayerName":
         w().user.name = msg.name;
@@ -88,12 +99,51 @@ function core_contentManager_onMessage(msg){
             if(msg.moduleName === undefined){ log.error("core_contentManager_onMessage: moduleName not set"); return; }
             if(msg.gameAddress === undefined){ log.error("core_contentManager_onMessage: gameAddress not set"); return; }
             if(msg.gsid === undefined){ log.error("core_contentManager_onMessage: gsid not set"); return; }
-            w().user.gameAddress = msg.gameAddress;
-            w().user.gsid        = msg.gsid;
+            if(msg.nn === undefined){ log.error("core_contentManager_onMessage: nn not set"); return; }
+            w().user.gameAddress  = msg.gameAddress;
+            w().user.gsid         = msg.gsid;
+            w().user.numberInGame = msg.nn;
             w().user.stage = "gaming";
             log.data.debug("Set user.gsid: "+w().user.gsid);
             log.data.debug("Set user.gameAddress: "+w().user.gameAddress);
+            log.data.debug("Set user.numberInGame: "+w().user.numberInGame);
             log.data.debug("Set user.stage: "+w().user.stage);
+            if(loadScript(msg.resourceId)){                            // Синхронно подгружаем скрипт модуля формы ожидания игроков (в синглплеере сразу игру)
+                log.debug(msg.moduleName+" module loaded");
+                let mainFunctionName = msg.appName+"_"+msg.moduleName+"_main";
+                log.debug("Call "+mainFunctionName);
+                if(window[mainFunctionName] instanceof Function){       // Вызываем входную функцию
+                    window[mainFunctionName]();
+                }
+            }else{
+                log.error("core_contentManager_onMessage: Error loading starting game module");
+            }
+        break;
+        case "returnGameSession":                                         // Возвращаем игрока в игровую сессию
+            log.data.debug("Received game session for return: ", msg);
+            if(msg.resourceId === undefined){ log.error("core_contentManager_onMessage: recourceId not set"); return; }
+            if(msg.appName === undefined){ log.error("core_contentManager_onMessage: appName not set"); return; }
+            if(msg.moduleName === undefined){ log.error("core_contentManager_onMessage: moduleName not set"); return; }
+            if(msg.gameAddress === undefined){ log.error("core_contentManager_onMessage: gameAddress not set"); return; }
+            if(msg.gsid === undefined){ log.error("core_contentManager_onMessage: gsid not set"); return; }
+            if(msg.nn === undefined){ log.error("core_contentManager_onMessage: nn not set"); return; }
+            if(msg.gameStatus === undefined){ log.error("core_contentManager_onMessage: gameStatus not set"); return; }
+            if(msg.playersNames === undefined){ log.error("core_contentManager_onMessage: playersNames not set"); return; }
+            if(msg.gameStatus === undefined){ log.error("core_contentManager_onMessage: gameStatus not set"); return; }
+            w().user.gameAddress  = msg.gameAddress;
+            w().user.gsid         = msg.gsid;
+            w().user.numberInGame = msg.nn;
+            w().user.name         = msg.playersNames[msg.nn].name;
+            w().user.stage = "gaming";
+            log.data.debug("Set user.gsid: "+w().user.gsid);
+            log.data.debug("Set user.gameAddress: "+w().user.gameAddress);
+            log.data.debug("Set user.numberInGame: "+w().user.numberInGame);
+            log.data.debug("Set user.name: "+w().user.name);
+            log.data.debug("Set user.stage: "+w().user.stage);
+            log.debug("Trying async load module requestName");
+            loadScript("core/js/requestName");                         // Асинхронно загружаем модуль входа пользователя (если придётся возвращаться после игры)
+            log.debug("Trying async load module selectGame");
+            loadScript("core/js/selectGame");                          // Асинхронно загружаем модуль выбора игры (если придётся возвращаться после игры)
             if(loadScript(msg.resourceId)){                            // Синхронно подгружаем скрипт модуля формы ожидания игроков (в синглплеере сразу игру)
                 log.debug(msg.moduleName+" module loaded");
                 let mainFunctionName = msg.appName+"_"+msg.moduleName+"_main";

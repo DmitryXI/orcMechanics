@@ -222,10 +222,12 @@ function Logger(logLevel=8, showParams=true, printStack=false, toConsole=true, t
             }
 
             if(obj !== null){
-                if(this.toConsole){ console.log([importanceText+": "+message+": "+JSON.stringify(obj).substring(0, 220-message.length), obj]); }
+//                if(this.toConsole){ console.log([importanceText+": "+message+": "+JSON.stringify(obj).substring(0, 220-message.length), obj]); }
+                if(this.toConsole){ console.log([importanceText+": "+message+": "+JSON.stringify(obj), obj]); }
                 if(this.toStorage){ this.logStorage.push(importanceText+": "+message+": "+JSON.stringify(obj)); }
             }else if(typeof message === "object"){
-                if(this.toConsole){ console.log([importanceText+": "+JSON.stringify(message).substring(0, 220), message]); }
+//                if(this.toConsole){ console.log([importanceText+": "+JSON.stringify(message).substring(0, 220), message]); }
+                if(this.toConsole){ console.log([importanceText+": "+JSON.stringify(message), message]); }
                 if(this.toStorage){ this.logStorage.push(importanceText+": "+JSON.stringify(message)); }
             }else{
                 if(this.toConsole){ console.log(importanceText+": "+message); }
@@ -602,15 +604,6 @@ function HTMLForm_onResize(form, widthPerc=null, heightPerc=null){
 }
 
 
-
-
-
-
-
-
-
-
-
 // Штатная отправка сообщений серверу. to - адрес получателя, action - действие (обязательное поле), msg - объект с прикладными полями сообщения
 function sendMsg(to, action, msg={}){
     log.func.debug7("core.sendMsg: Send to "+to+", msg: ", msg);
@@ -675,8 +668,8 @@ function onMessage(err, msg){
             log.func.error("core.onMessage: Unexpected message in channel general: msg: ", msg);
             return;
         }
-    }else if(msg.address === w().user.clientAddress){                                               // Обработка сообщений на персональный адрес клиента
-        if(body.from === undefined){                                                              // Поле body.from должно быть обязательно
+    }else if(msg.address === w().user.clientAddress){                                              // Обработка сообщений на персональный адрес клиента
+        if(body.from === undefined){                                                               // Поле body.from должно быть обязательно
             log.error("core.onMessage: Received wrong body (without from)");
             return;
         }
@@ -685,7 +678,7 @@ function onMessage(err, msg){
             return;
         }
         if(body.action === "error"){
-            log.error("core.onMessage: Received ERROR from "+body.from+": "+body.text);                             // Обработка ошибки со стороны сервера
+            log.error("core.onMessage: Received ERROR from "+body.from+": "+body.text);             // Обработка ошибки со стороны сервера
             return;
         }else if((w().user.status === "registration") && (body.action === "serverConfirm")){        // Если это подтверждение регистрации по клиентскому адресу
             log.info("Session "+w().user.usid+" confirmed from server");
@@ -701,7 +694,7 @@ function onMessage(err, msg){
         }else if(w().user.status == "ready"){                                                       // Если статус сессии ready - обработка основного взаимодействия
             core_contentManager_onMessage(body);                                                    // Передаём тело сообщения на обработку менеджеру
         }else{
-            log.func.error("core.onMessage: Unexpected action: "+body.action+" in clien status: "+w().user.status);
+            log.func.error("core.onMessage: Unexpected action: "+body.action+" in client status: "+w().user.status);
             return;
         }
     }else{
