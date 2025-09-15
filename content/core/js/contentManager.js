@@ -20,7 +20,9 @@ function core_contentManager_main() {
 function core_contentManager_onMessage(msg){
     log.func.debug6("core.contentManager_onMessage: msg: ", msg);
 
-    if((w().user.stage == "gaming") && (msg.from === w().user.gameAddress)){
+//    log.debug8("user.stage = "+w().user.stage+", user.gameAddress = "+w().user.gameAddress);
+
+    if((w().user.stage === "gaming") && (msg.from === w().user.gameAddress)){
         w().user.onGameMessage(msg);
         return;
     }
@@ -141,9 +143,9 @@ function core_contentManager_onMessage(msg){
             log.data.debug("Set user.name: "+w().user.name);
             log.data.debug("Set user.stage: "+w().user.stage);
             log.debug("Trying async load module requestName");
-            loadScript("core/js/requestName");                         // Асинхронно загружаем модуль входа пользователя (если придётся возвращаться после игры)
+            loadScript("core/js/requestName", true);                         // Асинхронно загружаем модуль входа пользователя (если придётся возвращаться после игры)
             log.debug("Trying async load module selectGame");
-            loadScript("core/js/selectGame");                          // Асинхронно загружаем модуль выбора игры (если придётся возвращаться после игры)
+            loadScript("core/js/selectGame", true);                          // Асинхронно загружаем модуль выбора игры (если придётся возвращаться после игры)
             if(loadScript(msg.resourceId)){                            // Синхронно подгружаем скрипт модуля формы ожидания игроков (в синглплеере сразу игру)
                 log.debug(msg.moduleName+" module loaded");
                 let mainFunctionName = msg.appName+"_"+msg.moduleName+"_main";

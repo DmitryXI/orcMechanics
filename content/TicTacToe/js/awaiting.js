@@ -96,6 +96,10 @@
                 if(msg.resourceId === undefined){ log.error("TicTacToe_awaiting_onGameMessage: recourceId not set"); return; }
                 if(msg.appName === undefined){ log.error("TicTacToe_awaiting_onGameMessage: appName not set"); return; }
                 if(msg.moduleName === undefined){ log.error("TicTacToe_awaiting_onGameMessage: moduleName not set"); return; }
+                if(msg.moduleName === undefined){ log.error("TicTacToe_awaiting_onGameMessage: youNum not set"); return; }
+
+                w().user.numberInGame = msg.youNum;
+                log.data.debug("Set user.numberInGame: "+w().user.numberInGame);
 
                 if(loadScript(msg.resourceId)){                            // Синхронно подгружаем скрипт модуля непосредственно игры
                     log.debug(msg.moduleName+" module loaded");

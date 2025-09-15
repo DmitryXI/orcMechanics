@@ -29,9 +29,21 @@
             -ms-user-select: none; /* Internet Explorer/Edge */
             user-select: none; /* Non-prefixed version, currently */
         }
+        #${id}_menu_quit {
+            display: flex;
+            flex: 1;
+            justify-content: flex-end;
+            cursor: pointer;
+        }
+        #${id}_menu_status {
+            display: flex;
+            flex: 1;
+            justify-content: flex-start;
+        }
     </style>
     <div id="${id}_menuHeader">
-        <div style="display: flex; flex: 1; justify-content: flex-end;">Меню игры...</div>
+        <div id="${id}_menu_status">Статус...</div>
+        <div id="${id}_menu_quit">Выйти</div>
     </div>
     <div id="${id}_main_block">
         По идее на канве этого дива и рисовать... ну или вместо дива здесь должна быть канва...
