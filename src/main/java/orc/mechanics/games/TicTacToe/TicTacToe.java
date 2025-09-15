@@ -28,6 +28,7 @@ public class TicTacToe extends AbstractVerticle {
     private LocalMap<String, String> gamesList              = null;                                     // Список игр
     private EventBus                 eb                     = null;                                     // Шина данных для обмена сообщениями вертиклами между собой и вертиклов с веб-клиентами
     private GameSessionsManager      gameSessions           = null;                                     // Менеджер сессий игр
+    private Game                     game                   = null;                                     // Игровой процессор
 
 
     @Override
@@ -41,6 +42,7 @@ public class TicTacToe extends AbstractVerticle {
 
         verticlesAddresses.put(localAddress, "TicTacToe");                                           // Регистрируем адрес в общем списке
         gamesList.put(localAddress, "Крестики-нолики");                                              // Регистрируем игру в общем списке
+        game = new Game();
 
 //        MessageConsumer<Object> mc;                                                                   // Тестируем сохранение консумера для возможности снятия регистрации с адреса
 //        mc = eb.localConsumer(localAddress, this::onMessage);                                         // Подписываемся на сообщения на свой адрес
@@ -508,9 +510,23 @@ public class TicTacToe extends AbstractVerticle {
             return;
         }
 
-        String from   = (String) msg.get("from");
-        String csid   = (String) msg.get("usid");
-        String action = (String) msg.get("action");
+        String from   = (String) msg.get("from");                   // Адрес клиента
+        String csid   = (String) msg.get("usid");                   // ID сессии клиента
+        String action = (String) msg.get("action");                 // Действие
+
+        HashMap<String, String> player = getPlayerByUid(csid, gsid); // Объект игрока в игровой сессии
+
+        if (player == null) {
+            sendClientMessage(from, "notInGame", new JSONObject()
+                    .put("usid", csid)
+                    .put("gsid", gsid)
+                    .put("game", "TicTacToe")
+                    .put("clientAddress", (String) msg.get("clientAddress"))
+            );
+            return;
+        }
+
+        ArrayList<HashMap<String, String>> playersNames = null;
 
         if (from == null){
             log.error(localAddress+"::onClientMessage: no from field in body ("+msg.toString()+")");
@@ -524,12 +540,49 @@ public class TicTacToe extends AbstractVerticle {
 
         switch (action){
             case "getPlayersList":                                                              // Запрос писка участников игровой сессии
-                ArrayList<HashMap<String, String>> playersNames = getPlayersList(gsid);
+                playersNames = getPlayersList(gsid);
                 sendGameMessage(from, gameAddress, "playersList", new JSONObject()
                         .put("gsid", gsid)
                         .put("gameAddress", gameAddress)
                         .put("playersNames", playersNames)
                 );
+                break;
+            case "getField":                                                                   // Запрос игрового поля
+                playersNames = getPlayersList(gsid);
+                sendGameMessage(from, gameAddress, "setField", new JSONObject()
+                        .put("gsid", gsid)
+                        .put("gameAddress", gameAddress)
+                        .put("field", (Integer[][]) (((BattleField)(gameSessions.getSession(gsid).get("field"))).getField()))
+                );
+                break;
+            case "setTurn":                                                                    // Ход игрока
+                if (!Integer.valueOf(player.get("number")).equals(gameSessions.getInteger(gsid, "turnOf"))) {
+                    log.error(localAddress + "::onClientMessage: on action setTurn: not you turn for uid="+csid+", gsid="+gsid);
+                    sendGameMessage(from, gameAddress, "error", new JSONObject().put("text", "Not you turn"));
+                    return;
+                }
+
+                if ((msg.get("x") == null) ||  (msg.get("y") == null)) {
+                    log.error(localAddress + "::onClientMessage: on action setTurn: turn without X or Y for uid="+csid+", gsid="+gsid);
+                    sendGameMessage(from, gameAddress, "error", new JSONObject().put("text", "Expected x and y params"));
+                }
+
+                if (game.makeTurn(csid, gsid, from, player, gameSessions, (Integer) msg.get("x"),  (Integer) msg.get("y"))) {     // Пытаемся выполнить ход
+                    ArrayList<Integer[]> newPoints = new ArrayList<>();
+                    Integer[] point = new Integer[2];
+                    point[0] = (Integer) msg.get("x");
+                    point[1] = (Integer) msg.get("y");
+
+                    // Проверяем на условия победы
+                    // Если ход успешный, проверяем на необходимость ходить ИИ (и выполняем ходы, пока не дойдём до следующего игрока)
+                    // Рассылаем уведомление о изменениях на поле и с turnOf
+                    sendMsgGameToPlayers("nextTurn", new JSONObject()
+                            .put("turnOf", gameSessions.getInteger(gsid, "turnOf"))
+                            .put("newPoints", newPoints)
+                    );
+                }else{
+                    sendGameMessage(from, gameAddress, "error", new JSONObject().put("text", "Cell "+(String)msg.get("x")+"x"+(String)msg.get("y")+" cannot be occupied"));
+                }
                 break;
             default:
                 log.debug(localAddress+"::onClientMessage: unknown action: "+action);
@@ -695,6 +748,11 @@ public class TicTacToe extends AbstractVerticle {
         return list;
     }
 
+    // Разослать сообщение от имени игры всем участникам-игрокам
+    private void sendMsgGameToPlayers(String action,JSONObject msg){
+
+        //
+    }
 
 }
 
