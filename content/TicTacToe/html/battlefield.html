@@ -12,7 +12,7 @@
             padding 0px;
             margin: 0px;
         }
-        #${id}_menuHeader {
+        #${id}_menu {
             display: flex;
             width: 100%;
             font-size: 20px;
@@ -40,12 +40,15 @@
             flex: 1;
             justify-content: flex-start;
         }
+        #${id}_canvas {
+            border: 0px;
+            padding: 0px;
+            margin: 0px;
+        }
     </style>
-    <div id="${id}_menuHeader">
+    <div id="${id}_menu">
         <div id="${id}_menu_status">Статус...</div>
         <div id="${id}_menu_quit">Выйти</div>
     </div>
-    <div id="${id}_main_block">
-        По идее на канве этого дива и рисовать... ну или вместо дива здесь должна быть канва...
-    </div>
+    <canvas id="${id}_canvas"></canvas>
 </div>

@@ -259,7 +259,8 @@ function refreshForms(formId=null){
 
     if(formId !== null){
         if(window[w().forms[formId].onResize] instanceof Function){
-            window[w().forms[formId].onResize](w().forms[formId].element[0], ...w().forms[formId].onResizeParams);
+//            window[w().forms[formId].onResize](w().forms[formId].element[0], ...w().forms[formId].onResizeParams);
+            window[w().forms[formId].onResize](w().forms[formId], ...w().forms[formId].onResizeParams);
         }
 
         return;
@@ -268,7 +269,7 @@ function refreshForms(formId=null){
     for(formId in w().forms){
         if(window[w().forms[formId].onResize] instanceof Function){
             log.form.debug8("Resizing form formId: "+formId);
-            window[w().forms[formId].onResize](w().forms[formId].element[0], ...w().forms[formId].onResizeParams);
+            window[w().forms[formId].onResize](w().forms[formId], ...w().forms[formId].onResizeParams);
         }
     }
 }
@@ -596,10 +597,10 @@ function HTMLForm_onResize(form, widthPerc=null, heightPerc=null){
     let width = Math.trunc(screen.width * (widthPerc/100));
     let height = Math.trunc(screen.height * (heightPerc/100));
 
-    form.style.left   = Math.trunc((screen.width-width)/2)+"px";
-    form.style.top    = Math.trunc((screen.height-height)/2)+"px";
-    form.style.width  = width+"px";
-    form.style.height = height+"px";
+    form.element[0].style.left   = Math.trunc((screen.width-width)/2)+"px";
+    form.element[0].style.top    = Math.trunc((screen.height-height)/2)+"px";
+    form.element[0].style.width  = width+"px";
+    form.element[0].style.height = height+"px";
 //    log.debug("width: "+width+", height: "+height+", left: "+form.style.left+", top: "+form.style.top+", swidth: "+screen.width+", screen.height: "+screen.height);
 }
 

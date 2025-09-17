@@ -5,6 +5,7 @@
     w().user.onGameMessage = TicTacToe_battlefield_onGameMessage;   // Вешаем обработчик входящих сообщений от игры
     let playersList = null;                                         // Список имён участников сессии
     let youTurn = null;                                             // Флаг владения ходом
+    let canvas = null;                                              // Холст, на котором рисуем игровое поле
 
 
 
@@ -14,6 +15,7 @@
         if(f(mainFormId) === null){                                                         // Навешиваем обработчики и пр. только если форма ещё не загружена и не обработана
             mainForm = addHTMLForm("TicTacToe/html/battlefield", mainFormId, [100, 100]);
             d("body").innerHTML = "";                                                       // Обнуляем содержимое body
+            canvas = mainForm.getHTMLElement("canvas");                                     // Выносим в переменную модуля ссылку элемент canvas
 
             mainForm.getHTMLElement("menu_quit").addEventListener('click', () => {          // Устанавливаем обработчик на конпку "Назад"
                 sendMsg("core", "leaveGame", {                                              // Отправляем сообщение серверу о выходе из игры
@@ -49,10 +51,58 @@
         if(mainForm !== null){
             if(d(mainFormId, parent) === null){
                 parent.appendChild(getFormElement(mainFormId));
+                TicTacToe_battlefield_onResize(mainForm);                                   // Размеры элементы появляются только у видимых элементов, поэтому после добавления в документ сразу делаем ресайз
             }
         }else{
             log.error("TicTacToe_battlefield_showForm: battlefield main form not found");
         }
+    }
+
+    function TicTacToe_battlefield_onResize(form){                                         // Обработка события ресайза клиентской области
+        log.func.debug6("TicTacToe_battlefield_onResize(form)", form);
+
+        if(form === null){
+            log.error("TicTacToe_battlefield_onResize: Can't get main form");
+        }
+
+        let formElement = form.getHTMLElement();
+        let menu        = form.getHTMLElement("menu");
+        let canvas      = form.getHTMLElement("canvas");
+
+
+        let screen = getWorkSize();
+
+        let width = Math.trunc(screen.width);
+        let height = Math.trunc(screen.height);
+
+        formElement.style.left   = Math.trunc((screen.width-width)/2)+"px";
+        formElement.style.top    = Math.trunc((screen.height-height)/2)+"px";
+        formElement.style.width  = width+"px";
+        formElement.style.height = height+"px";
+
+//        let formRect = formElement.getBoundingClientRect();
+//        let menuRect = menu.getBoundingClientRect();
+//        log.debug("xxxxxxxxxxxxxxxxx formRect, menuRect: ",formRect, menuRect);
+
+//        width  = formElement.clientWidth;
+        height = formElement.clientHeight - menu.offsetHeight - 3;
+
+//        width  = formElement.clientWidth;
+//        height = formElement.clientHeight - menu.offsetHeight;
+//        log.debug("sssssssssssssssss "+menu.clientHeight+" - "+menu.offsetHeight);
+
+        log.debug("sssssssssssssssss "+formElement.clientHeight+", "+menu.offsetHeight+", "+(formElement.clientHeight-menu.offsetHeight));
+
+
+        width = 1000;
+//        height = 325;
+        canvas.style.width  = width+"px";
+        canvas.style.height = height+"px";
+
+        log.debug("zzzzzzzzzzzzzzzzz w="+width+", h="+height);
+
+// offsetWidth и clientWidth
+
     }
 
     // Обновление статуса на форме

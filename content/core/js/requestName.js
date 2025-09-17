@@ -42,10 +42,10 @@ function core_requestName_showRequestNameForm(parentId=null){
     }
 
     if(d("core_requestName", parent) === null){
-        core_requestName_onResize(f("core_requestName",0));
+        core_requestName_onResize(f("core_requestName"));
         parent.appendChild(getFormElement("core_requestName"));
     }else{
-        core_requestName_onResize(f("core_requestName",0));
+        core_requestName_onResize(f("core_requestName"));
     }
 }
 
@@ -71,19 +71,19 @@ function core_requestName_onResize(form){
     let screen = getWorkSize();
     let w = Math.trunc(screen.width/3)
     let h = Math.trunc(screen.height/3)
-    form.style.left = w+"px"
-    form.style.top = h+"px"
-    form.style.width = form.style.left
-    form.style.height = form.style.top
+    form.element[0].style.left = w+"px"
+    form.element[0].style.top = h+"px"
+    form.element[0].style.width = form.element[0].style.left
+    form.element[0].style.height = form.element[0].style.top
 
-    let loginInp = form.querySelector("#"+formId+"_login")
+    let loginInp = form.element[0].querySelector("#"+formId+"_login")
     loginInp.style.left = Math.trunc(w/4)+"px"
     loginInp.style.width = Math.trunc(w/2)+"px"
     loginInp.style.top = Math.trunc(h/4)+"px"
     loginInp.style.height = Math.trunc(h/2)+"px"
     loginInp.style.fontSize = Math.trunc(h/5)+"px"
 
-    let loginBtn = form.querySelector("#"+formId+"_entrance")
+    let loginBtn = form.element[0].querySelector("#"+formId+"_entrance")
     loginBtn.style.left = Math.trunc(w/4)+"px"
     loginBtn.style.width = Math.trunc(w/2)+"px"
     loginBtn.style.top = Math.trunc(h/4)*3+"px"
