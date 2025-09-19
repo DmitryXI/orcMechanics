@@ -6,6 +6,7 @@
     let playersList = null;                                         // Список имён участников сессии
     let youTurn = null;                                             // Флаг владения ходом
     let canvas = null;                                              // Холст, на котором рисуем игровое поле
+    let field  = {"w":0,"h":0,"cell":null};                         // Данные игрового поля: w - ширина, h - высота, cell - массив с ячейками
 
 
 
@@ -82,27 +83,18 @@
 
 //        let formRect = formElement.getBoundingClientRect();
 //        let menuRect = menu.getBoundingClientRect();
-//        log.debug("xxxxxxxxxxxxxxxxx formRect, menuRect: ",formRect, menuRect);
-
-//        width  = formElement.clientWidth;
-        height = formElement.clientHeight - menu.offsetHeight - 3;
-
 //        width  = formElement.clientWidth;
 //        height = formElement.clientHeight - menu.offsetHeight;
-//        log.debug("sssssssssssssssss "+menu.clientHeight+" - "+menu.offsetHeight);
 
-        log.debug("sssssssssssssssss "+formElement.clientHeight+", "+menu.offsetHeight+", "+(formElement.clientHeight-menu.offsetHeight));
+        width  = formElement.clientWidth;
+        height = formElement.clientHeight - menu.offsetHeight - 4;
 
+//        canvas.style.width  = width+"px";
+//        canvas.style.height = height+"px";
+        canvas.width  = width;
+        canvas.height = height;
 
-        width = 1000;
-//        height = 325;
-        canvas.style.width  = width+"px";
-        canvas.style.height = height+"px";
-
-        log.debug("zzzzzzzzzzzzzzzzz w="+width+", h="+height);
-
-// offsetWidth и clientWidth
-
+        TicTacToe_battlefield_paintField();     // Перерисовываем канвас
     }
 
     // Обновление статуса на форме
@@ -114,6 +106,77 @@
         }else{
             mainForm.getHTMLElement("menu_status").style.color = "orange";
         }
+    }
+
+    // Приём данных игрового поля
+    function TicTacToe_battlefield_receiveField(newField){
+        log.func.debug6("TicTacToe_battlefield_receiveField(newField)", newField);
+
+        field.w = newField[0].length;
+        field.h = newField.length;
+        field.cell = newField;
+    }
+
+    // Отрисовка игрового поля
+    function TicTacToe_battlefield_paintField(){
+        log.func.debug6("TicTacToe_battlefield_paintField()");
+
+        if(field.cell === null){ return; }
+
+        let lineThickness = 3;                  // Толщина линий игрового поля в пикселях
+
+        // Размеры
+        let width  = Math.trunc(canvas.clientWidth * (w().user.scale/100));
+        let height = Math.trunc(canvas.clientHeight * (w().user.scale/100));
+        if(width > height){ width = height; }else{ height = width; }                    // Квадратизируем поле
+        let left   = Math.trunc((canvas.clientWidth - width)/2);
+        let top    = Math.trunc((canvas.clientHeight - height)/2);
+        let stepX  = Math.trunc(width/field.w);
+        let stepY  = Math.trunc(height/field.h);
+
+        // Рисуем сетку
+        let grid = new Path2D();
+        grid.lineWidth = lineThickness;                                              // Задаём толщину линии
+
+        for(x = 0; x <= field.w; x++){
+            grid.moveTo(left+(x*stepX), top);
+            grid.lineTo(left+(x*stepX), height);
+        }
+
+        for(y = 0; y <= field.h; y++){
+            grid.moveTo(left, top+(y*stepY));
+            grid.lineTo(left+width, top+(y*stepY));
+        }
+
+        if (canvas.getContext) {
+            let ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);               // Очищаем холст
+            ctx.fillStyle = "Black";                                                    // Задаём цвет заливки
+            ctx.lineWidth = grid.lineWidth;                                             // Берём толщину линии, которую задали гриду
+            ctx.stroke(grid);
+
+            // Выставляем шрифт и размер шрифта и считаем отступы для центровки в ячейке
+            let cellWidth  = stepX - lineThickness;
+            let cellHeight = stepY - lineThickness;
+            let cellFont   = cellWidth;
+
+            ctx.font = cellFont+"px serif";                 // Ставим размер шрифта в размер клетки
+
+            let markSizes = [];
+
+            for(i=0; i < playersList.length; i++){          // Считаем отступы для номера каждого участника
+                markSizes.push({"dw":Math.trunc((stepX-lineThickness-ctx.measureText(i).width)/2), "dh":Math.trunc((stepX-lineThickness-ctx.measureText(i).hangingBaseline)/2)});
+            }
+
+            for(x=0; x < field.w; x++){                     // Расставяем метки
+                for(y=0; y < field.h; y++){
+                    if(field.cell[x][y] !== null){
+                        ctx.fillText(field.cell[x][y], left+(x*stepX)+markSizes[field.cell[x][y]].dw, top+(y*stepY)+cellHeight-markSizes[field.cell[x][y]].dh);
+                    }
+                }
+            }
+        }
+
     }
 
     // Обработка сообщений сервера
@@ -135,10 +198,18 @@
                 }else{
                     youTurn = false;
                 }
+                TicTacToe_battlefield_receiveField(msg.field);
                 log.data.debug("Set playersList: ", playersList);
                 log.data.debug("Set user.numberInGame: ", w().user.numberInGame);
                 log.data.debug("Set youTurn: ", youTurn);
-                TicTacToe_battlefield_updStatus(msg.turnOf)
+                log.data.debug("Set field: ", field);
+                TicTacToe_battlefield_updStatus(msg.turnOf);                                 // Обновляем статусы игроков
+                TicTacToe_battlefield_paintField();                                          // Отрисовываем поле
+            break;
+            case "getField":                                                                 // Заполняем игровое поле
+                TicTacToe_battlefield_receiveField(msg.field);
+                log.data.debug("Set field: ", field);
+                TicTacToe_battlefield_paintField();                                          // Отрисовываем поле
             break;
             case "nextTurn":                                                                 // Заполняем все данные и отрисовываем всё, что нужно
                 if(w().user.numberInGame === Number(msg.turnOf)){                            // Вычисляем флаг владения ходом
@@ -146,8 +217,16 @@
                 }else{
                     youTurn = false;
                 }
+
+                if(msg.newPoints !== null){
+                    for(i in msg.newPoints){
+                        field.cell[Number(msg.newPoints[i][0])][Number(msg.newPoints[i][1])] = [Number(msg.newPoints[i][2])]
+                    }
+                }
+
                 log.data.debug("Set youTurn: ", youTurn);
-                TicTacToe_battlefield_updStatus(msg.turnOf)
+                TicTacToe_battlefield_updStatus(msg.turnOf);
+                TicTacToe_battlefield_paintField();                                             // Отрисовываем поле
             break;
             case "playersList":                                                                 // Заполняем/обновляем список игроков
                 playersList = msg.playersNames;
