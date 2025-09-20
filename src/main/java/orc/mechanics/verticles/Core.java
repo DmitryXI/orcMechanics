@@ -489,6 +489,10 @@ public class Core extends AbstractVerticle {
                     sendClientMessage(clientAddress,"error", new JSONObject().put("text", "You are not in game: "+(String) msg.get("game")+"::"+gid));
                 }
                 break;
+            case "clientActivity":                                      // Обновляем время последней активности клиенту
+                uid = (String) msg.get("usid");
+                clientSessions.setActivity(uid);
+                break;
             default:
                 log.error("Core::onGamesMessage: unknown action "+action+" from game "+from);
 //                sendClientMessage(from,"error", new JSONObject().put("text","unknown action "+action));

@@ -513,6 +513,7 @@ public class TicTacToe extends AbstractVerticle {
         String from   = (String) msg.get("from");                    // Адрес клиента
         String csid   = (String) msg.get("usid");                    // ID сессии клиента
         String action = (String) msg.get("action");                  // Действие
+        setGameFinish gmFin = null;                                  // Структура для получения результата проверки победы
 
         HashMap<String, String> player = getPlayerByUid(csid, gsid); // Объект игрока в игровой сессии
 
@@ -525,6 +526,8 @@ public class TicTacToe extends AbstractVerticle {
             );
             return;
         }
+
+        sendClientMessage("core", "clientActivity", new JSONObject().put("usid", csid));  // Отправляем уведомление ядру, что клиент активен
 
         ArrayList<HashMap<String, String>> playersNames = null;
 
@@ -593,7 +596,39 @@ public class TicTacToe extends AbstractVerticle {
                     newPoints.add(point);
 
                     // Проверяем на условия победы
+                    gmFin = game.checkGameWin(Integer.valueOf((String) player.get("number")), gsid, gameSessions);
+                    if (gmFin.finished) {
+                        log.debug("Game "+gsid+" finished with player "+(String) player.get("number")+" win!");
+                        gameSessions.setValue(gsid, "turnOf", -1);                                           // На всякий случай выставляем принадлежность хода несуществующему игроку
+
+                        sendMsgGameToPlayers(gameSessions.getPlayers(gsid), gsid,"gameFinished", new JSONObject()
+                                .put("winner", Integer.valueOf(gmFin.winnerNumber))
+                                .put("winLine", gmFin.winLine)
+                                .put("newPoints", newPoints)
+                        );
+
+                        removeGameSession(gsid, "Game finished");
+                        return;
+                    }
+
                     // Если ход успешный, проверяем на необходимость ходить ИИ (и выполняем ходы, пока не дойдём до следующего игрока)
+
+
+                    // Проверяем на заполнение поля и, если есть, рассылаем уведомление о завершении игры и удаляем сессию
+                    if (game.checkGameDraw(gsid, gameSessions)) {
+                        log.debug("Game "+gsid+" finished with draw");
+                        gameSessions.setValue(gsid, "turnOf", -1);                                           // На всякий случай выставляем принадлежность хода несуществующему игроку
+
+                        sendMsgGameToPlayers(gameSessions.getPlayers(gsid), gsid,"gameFinished", new JSONObject()
+                                .put("winner", "none")
+                                .put("newPoints", newPoints)
+                        );
+
+                        removeGameSession(gsid, "Game finished");
+                        return;
+                    }
+
+
                     // Рассылаем уведомление о изменениях на поле и с turnOf
                     sendMsgGameToPlayers(gameSessions.getPlayers(gsid), gsid,"nextTurn", new JSONObject()
                             .put("turnOf", gameSessions.getInteger(gsid, "turnOf"))
@@ -617,20 +652,6 @@ public class TicTacToe extends AbstractVerticle {
         if (ses == null) { return false; }
 
         removeGameSession(reason, ses);
-
-//        String gameAddress = gameSessions.getAddress(gsid);
-//        ArrayList<HashMap<String, String>> players = gameSessions.getPlayers(gsid);
-//
-//        for (HashMap<String, String> player : players){                                         // Рассылаем всем подключенным игрокам сообщение о удалении игровой сессии
-//            if ((player.get("type").equals("human")) && (player.get("csid") != null)){
-//                sendGameMessage((String) player.get("clientAddress"), gameAddress, "sessionRemoved", new JSONObject().put("gsid", gsid).put("reason", reason));
-//            }
-//        }
-//
-//        MessageConsumer<Object> mc = (MessageConsumer<Object>) ses.get("consumer");             // Снимаем подписку на адрес сессии
-//        mc.unregister();
-//
-//        sendClientMessage("core", "removeGameSession", new JSONObject().put("gsid", gsid).put("address", (String) ses.get("address")).put("reason", reason));  // Отправляем уведомление ядру (что бы проверил клиентские сессии, и если надо, затёр подключение)
 
         gameSessions.remove(gsid);                                                              // Удаляем сессию из хранилища
 

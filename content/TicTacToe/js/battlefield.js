@@ -8,6 +8,7 @@
     let canvas = null;                                              // Холст, на котором рисуем игровое поле
     let field  = {"w":0,"h":0,"cell":null};                         // Данные игрового поля: w - ширина, h - высота, cell - массив с ячейками
     let cellsPos = null;                                            // Массив с координатами клеток сетки на канвасе
+    let winLine  = null;                                            // Массив точек линии победы (заполняется сообщением в случае победы)
 
 
 
@@ -165,7 +166,6 @@
             let markSizes = [];
 
             for(i=0; i < playersList.length; i++){          // Считаем отступы для номера каждого участника
-//                markSizes.push({"dw":Math.trunc((stepX-lineThickness-ctx.measureText(i).width)/2), "dh":Math.trunc((stepX-lineThickness-ctx.measureText(i).hangingBaseline)/2)});
                 markSizes.push({"dw":Math.trunc((cellWidth-ctx.measureText(i).width)/2), "dh":Math.trunc((cellHeight-ctx.measureText(i).hangingBaseline)/2)});
             }
 
@@ -176,6 +176,87 @@
                     }
                     cellsPos.push([left+(x*stepX)+lineThickness, left+((x+1)*stepX), top+(y*stepY)+lineThickness, top+((y+1)*stepY), x, y]);
                 }
+            }
+
+
+            let x1 = 3;
+            let y1 = 0;
+            let x2 = 0;
+            let y2 = 3;
+            let xp1;
+            let yp1;
+            let xp2;
+            let yp2
+
+            if(x2 != x1){
+                xp1 = left+(x1*stepX)+Math.trunc(stepX/3);
+                xp2 = left+(x2*stepX)+Math.trunc(stepX/3)*2;
+            } else {
+                xp1 = left+(x1*stepX)+Math.trunc(stepX/2);
+                xp2 = left+(x2*stepX)+Math.trunc(stepX/2);
+            }
+            if(y2 != y1){
+                yp1 = top+(y1*stepY)+Math.trunc(stepY/3);
+                yp2 = top+(y2*stepY)+Math.trunc(stepY/3)*2;
+            } else {
+                yp1 = top+(y1*stepY)+Math.trunc(stepY/2);
+                yp2 = top+(y2*stepY)+Math.trunc(stepY/2);
+            }
+            if((x2 < x1) && (y2 > y1)){                     // Для случая косой черты справа налево
+                xp1 = left+(x1*stepX)+Math.trunc(stepX/3)*2;
+                xp2 = left+(x2*stepX)+Math.trunc(stepX/3);
+                yp1 = top+(y1*stepY)+Math.trunc(stepY/3);
+                yp2 = top+(y2*stepY)+Math.trunc(stepY/3)*3;
+            }
+
+//log.error("zzzzzzzzzzz: "+xp1+", "+yp1+", "+xp2+", "+yp2);
+
+            let line = new Path2D();
+
+            if((x2 < x1) && (y2 > y1)){
+                line.moveTo(xp1, yp1);
+                line.lineTo(xp1+lineThickness, yp1-lineThickness);
+                line.lineTo(xp2+lineThickness, yp2-lineThickness);
+                line.lineTo(xp2, yp2);
+                line.lineTo(xp1, yp1);
+            }else{
+                line.moveTo(xp1, yp1);
+                line.lineTo(xp1+lineThickness, yp1-lineThickness);
+                line.lineTo(xp2+lineThickness, yp2-lineThickness);
+                line.lineTo(xp2, yp2);
+                line.lineTo(xp1, yp1);
+            }
+
+            ctx.fillStyle = "Red";
+            ctx.lineWidth = 1;
+            ctx.fill(line);
+//            ctx.stroke(line);
+
+            if(winLine !== null){                           // Если задана линия победы - проводим
+                ctx.fillStyle = "Red";                                                    // Задаём цвет заливки
+                ctx.lineWidth = lineThickness;                                            // Используем линию в любую тощину т.к. здесь пох...
+            ctx.fillStyle = "Black";                                                    // Задаём цвет заливки
+            ctx.lineWidth = 1;                                                          // Не используем линии толще единицы
+
+                let x1 = winLine[0][0];
+                let y1 = winLine[0][1];
+                let x2 = winLine[winLine.length-1][0];
+                let y2 = winLine[winLine.length-1][1];
+
+                let line = new Path2D();
+                line.moveTo(10,10);
+                line.lineTo(10, 200);
+                ctx.stroke(line);
+//                line.moveTo(left+(x1*stepX), top+(y1*stepY)+Math.trunc(stepY/2));
+//                line.lineTo(left+(x2*stepX), top+(y2*stepY)+Math.trunc(stepY/2));
+//                ctx.beginPath();
+//                ctx.moveTo(left+(x1*stepX), top+(y1*stepY)+Math.trunc(stepY/2));
+//                ctx.lineTo(left+(x2*stepX), top+(y2*stepY)+Math.trunc(stepY/2));
+//                ctx.fill();
+
+                log.debug("Point 0", winLine[0]);
+                log.debug("Point last", winLine[winLine.length-1]);
+                log.debug("Draw line: "+(left+(x1*stepX))+","+(top+(y1*stepY)+Math.trunc(stepY/2))+" - "+(left+(x2*stepX))+","+(top+(y2*stepY)+Math.trunc(stepY/2)))
             }
         }else{
             log.error("Can't get canvas content");
@@ -218,6 +299,8 @@
         field.cell[x][y] = w().user.numberInGame;
         sendMsg(w().user.gameAddress, "setTurn", {"x":x.toString(),"y":y.toString()});
     }
+
+    // Обработка завершения игры
 
     // Обработка сообщений сервера
     function TicTacToe_battlefield_onGameMessage(msg){
@@ -273,11 +356,32 @@
                 log.data.debug("Set playersList: ", playersList);
             break;
             case "sessionRemoved":
-                alert(msg.reason);                                                               // Отображаем алерт с причиной удаления сессии
-                delHTMLForm(mainFormId);                                                         // Полностью удаляем форму игры
-                w().user.stage = "selectGame";                                                   // Выставляем текущий этап как выбор игры
-                log.data.debug("Set user.stage: "+w().user.stage);
-                sendMsg("core", "getGameEntrance", {"game":"TicTacToe"});                        // Отправляем запрос на получение формы входа (в текущей реализации подругому мы не получим список сессий)
+                if(w().user.stage !== "finished"){
+                    alert(msg.reason);                                                               // Отображаем алерт с причиной удаления сессии
+                    delHTMLForm(mainFormId);                                                         // Полностью удаляем форму игры
+                    w().user.stage = "selectGame";                                                   // Выставляем текущий этап как выбор игры
+                    log.data.debug("Set user.stage: "+w().user.stage);
+                    sendMsg("core", "getGameEntrance", {"game":"TicTacToe"});                        // Отправляем запрос на получение формы входа (в текущей реализации подругому мы не получим список сессий)
+                }
+            break;
+            case "gameFinished":                                                                     // Обрабатываем завершение игры
+                if(w().user.stage === "gaming"){
+                    w().user.stage = "finished";
+                    log.data.debug("Set user.stage: "+w().user.stage);
+
+                    if(msg.newPoints !== null){
+                        for(i in msg.newPoints){
+                            field.cell[Number(msg.newPoints[i][0])][Number(msg.newPoints[i][1])] = [Number(msg.newPoints[i][2])]
+                        }
+                    }
+
+                    if(msg.winner !== "none"){                                                      // Если есть победитель
+                        winLine = msg.winLine;
+                    }
+
+                    TicTacToe_battlefield_paintField();                                             // Отрисовываем поле
+                    alert("Игра всё...");
+                }
             break;
             default:
                 log.error("TicTacToe_battlefield_onGameMessage: Unknown action: "+msg.action);
