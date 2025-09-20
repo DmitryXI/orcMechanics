@@ -7,6 +7,7 @@
     let youTurn = null;                                             // Флаг владения ходом
     let canvas = null;                                              // Холст, на котором рисуем игровое поле
     let field  = {"w":0,"h":0,"cell":null};                         // Данные игрового поля: w - ширина, h - высота, cell - массив с ячейками
+    let cellsPos = null;                                            // Массив с координатами клеток сетки на канвасе
 
 
 
@@ -27,6 +28,10 @@
                 w().user.stage = "selectGame";                                              // Выставляем текущий этап как выбор игры
                 log.data.debug("Set user.stage: "+w().user.stage);
                 sendMsg("core", "getGameEntrance", {"game":"TicTacToe"});                   // Отправляем запрос на получение формы входа (в текущей реализации подругому мы не получим список сессий)
+            });
+
+            canvas.addEventListener('click', function(e) {                                  // Цепляем обработчик кликов к канвасу
+                TicTacToe_battlefield_canvasClick(e);
             });
 
             sendMsg(w().user.gameAddress, "getClientPart", {"game":"TicTacToe","gsid":w().user.gsid}); // Отправляем запрос необходимой информации об игре
@@ -89,8 +94,6 @@
         width  = formElement.clientWidth;
         height = formElement.clientHeight - menu.offsetHeight - 4;
 
-//        canvas.style.width  = width+"px";
-//        canvas.style.height = height+"px";
         canvas.width  = width;
         canvas.height = height;
 
@@ -126,34 +129,31 @@
         let lineThickness = 3;                  // Толщина линий игрового поля в пикселях
 
         // Размеры
-        let width  = Math.trunc(canvas.clientWidth * (w().user.scale/100));
-        let height = Math.trunc(canvas.clientHeight * (w().user.scale/100));
+        let width  = Math.trunc(canvas.clientWidth * (w().user.scale/100)) - lineThickness;         // Т.к. линия может быть жирной, то уменьшаем доступную высоту и ширину поля на одну линию
+        let height = Math.trunc(canvas.clientHeight * (w().user.scale/100)) - lineThickness;
         if(width > height){ width = height; }else{ height = width; }                    // Квадратизируем поле
         let left   = Math.trunc((canvas.clientWidth - width)/2);
         let top    = Math.trunc((canvas.clientHeight - height)/2);
         let stepX  = Math.trunc(width/field.w);
         let stepY  = Math.trunc(height/field.h);
-
-        // Рисуем сетку
-        let grid = new Path2D();
-        grid.lineWidth = lineThickness;                                              // Задаём толщину линии
-
-        for(x = 0; x <= field.w; x++){
-            grid.moveTo(left+(x*stepX), top);
-            grid.lineTo(left+(x*stepX), height);
-        }
-
-        for(y = 0; y <= field.h; y++){
-            grid.moveTo(left, top+(y*stepY));
-            grid.lineTo(left+width, top+(y*stepY));
-        }
+        width  = stepX*field.w;                                                         // Пересчитываем ширину и высоту, т.к. мы отбрасываем дробные части при делении на квадраты
+        height = stepY*field.h;
+        cellsPos = [];                                                                  // Формат записи: x1, x2, y1, y2, x, y (x,y - индексы клетки поля в field)
 
         if (canvas.getContext) {
             let ctx = canvas.getContext("2d");
             ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);               // Очищаем холст
             ctx.fillStyle = "Black";                                                    // Задаём цвет заливки
-            ctx.lineWidth = grid.lineWidth;                                             // Берём толщину линии, которую задали гриду
-            ctx.stroke(grid);
+            ctx.lineWidth = 1;                                                          // Не используем линии толще единицы
+
+            // Рисуем сетку
+            for(x = 0; x <= field.w; x++){                                              // Вертикальные линии
+                ctx.fillRect(left+(x*stepX), top, lineThickness, height+lineThickness); // Рисуем линии прямоугольниками (если рисовать линию линией с толщиной больше единицы, то она будет центроваться по линии в один пиксель)
+            }
+
+            for(y = 0; y <= field.h; y++){                                              // Горизонтальные линии
+                ctx.fillRect(left, top+(y*stepY), width+lineThickness, lineThickness);
+            }
 
             // Выставляем шрифт и размер шрифта и считаем отступы для центровки в ячейке
             let cellWidth  = stepX - lineThickness;
@@ -165,18 +165,58 @@
             let markSizes = [];
 
             for(i=0; i < playersList.length; i++){          // Считаем отступы для номера каждого участника
-                markSizes.push({"dw":Math.trunc((stepX-lineThickness-ctx.measureText(i).width)/2), "dh":Math.trunc((stepX-lineThickness-ctx.measureText(i).hangingBaseline)/2)});
+//                markSizes.push({"dw":Math.trunc((stepX-lineThickness-ctx.measureText(i).width)/2), "dh":Math.trunc((stepX-lineThickness-ctx.measureText(i).hangingBaseline)/2)});
+                markSizes.push({"dw":Math.trunc((cellWidth-ctx.measureText(i).width)/2), "dh":Math.trunc((cellHeight-ctx.measureText(i).hangingBaseline)/2)});
             }
 
-            for(x=0; x < field.w; x++){                     // Расставяем метки
+            for(x=0; x < field.w; x++){                     // Расставляем метки
                 for(y=0; y < field.h; y++){
                     if(field.cell[x][y] !== null){
                         ctx.fillText(field.cell[x][y], left+(x*stepX)+markSizes[field.cell[x][y]].dw, top+(y*stepY)+cellHeight-markSizes[field.cell[x][y]].dh);
                     }
+                    cellsPos.push([left+(x*stepX)+lineThickness, left+((x+1)*stepX), top+(y*stepY)+lineThickness, top+((y+1)*stepY), x, y]);
                 }
+            }
+        }else{
+            log.error("Can't get canvas content");
+        }
+    }
+
+    // Обработка кликов по канвасу
+    function TicTacToe_battlefield_canvasClick(event) {
+        log.func.debug6("TicTacToe_battlefield_canvasClick(event)", event);
+
+        if(!youTurn){                                   // Если ход принадлежит другому игроку, возвращаемся
+            return;
+        }
+
+        let rect = canvas.getBoundingClientRect();
+        let xPx  = event.clientX - rect.left;
+        let yPx  = event.clientY - rect.top;
+        let x    = null;
+        let y    = null;
+        log.debug("canvasCilck: x: " + xPx + " y: " + yPx);
+
+        for(cellPos of cellsPos){                                                     // Проверяем попадание по клетке
+            if((xPx >= cellPos[0]) && (xPx <= cellPos[1]) && (yPx >= cellPos[2]) && (yPx<= cellPos[3])){
+                x = cellPos[4];
+                y = cellPos[5];
+                break;
             }
         }
 
+        if(x === null){                                             // Если x = null, значит ни в одну клетку не попали
+            return;
+        }
+        log.debug("Clicked to cell: x: " + x + " y: " + y);
+
+        if(field.cell[x][y] !== null){
+            alert("Сюда тыкать нельзя! Клетка "+x+", "+y+" уже занята");
+            return;
+        }
+
+        field.cell[x][y] = w().user.numberInGame;
+        sendMsg(w().user.gameAddress, "setTurn", {"x":x.toString(),"y":y.toString()});
     }
 
     // Обработка сообщений сервера
