@@ -51,6 +51,25 @@ public class BattleField {
         return false;
     }
 
+    // Получить массив с координатами всех пустых клеток
+    public Integer[][] getCellsByValue(Integer value){
+
+        Integer[][] res = new Integer[cellCount-filled][2];
+        int i = 0;
+
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                if (((value == null) && (field[x][y] == null)) || ((value != null) && (value.equals(field[x][y])))) {
+                    res[i][0] = x;
+                    res[i][1] = y;
+                    i++;
+                }
+            }
+        }
+
+        return res;
+    }
+
     // Получить игровое поле
     public Integer[][] getField() {
         return field;

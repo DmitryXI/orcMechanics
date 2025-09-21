@@ -611,9 +611,6 @@ public class TicTacToe extends AbstractVerticle {
                         return;
                     }
 
-                    // Если ход успешный, проверяем на необходимость ходить ИИ (и выполняем ходы, пока не дойдём до следующего игрока)
-
-
                     // Проверяем на заполнение поля и, если есть, рассылаем уведомление о завершении игры и удаляем сессию
                     if (game.checkGameDraw(gsid, gameSessions)) {
                         log.debug("Game "+gsid+" finished with draw");
@@ -627,6 +624,16 @@ public class TicTacToe extends AbstractVerticle {
                         removeGameSession(gsid, "Game finished");
                         return;
                     }
+
+                    // Проверяем на необходимость ходить ИИ (и выполняем ход(ы))
+                    while ((point = game.makeAutoTurn(gsid, gameSessions)) != null){
+                        // Проверяем победу
+                        // Проверяем заполнение поля
+                        // Добавляем point в newPoints
+                        newPoints.add(point);
+                    }
+
+
 
 
                     // Рассылаем уведомление о изменениях на поле и с turnOf

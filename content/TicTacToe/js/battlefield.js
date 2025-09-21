@@ -15,6 +15,14 @@
     function TicTacToe_battlefield_main(){                          // Входная функция модуля
         log.func.debug6("TicTacToe_battlefield_main()");
 
+        // Сбрасываем значение переменных уровня модуля в дефолт на случай создания новой игры
+        w().user.onGameMessage = TicTacToe_battlefield_onGameMessage;   // Вешаем обработчик входящих сообщений от игры
+        playersList = null;                                             // Список имён участников сессии
+        youTurn = null;                                                 // Флаг владения ходом
+        field  = {"w":0,"h":0,"cell":null};                             // Данные игрового поля: w - ширина, h - высота, cell - массив с ячейками
+        cellsPos = null;                                                // Массив с координатами клеток сетки на канвасе
+        winLine  = null;                                                // Массив точек линии победы (заполняется сообщением в случае победы)
+
         if(f(mainFormId) === null){                                                         // Навешиваем обработчики и пр. только если форма ещё не загружена и не обработана
             mainForm = addHTMLForm("TicTacToe/html/battlefield", mainFormId, [100, 100]);
             d("body").innerHTML = "";                                                       // Обнуляем содержимое body
@@ -179,80 +187,106 @@
             }
 
 
-            let x1 = 3;
-            let y1 = 0;
-            let x2 = 0;
-            let y2 = 3;
-            let xp1;
-            let yp1;
-            let xp2;
-            let yp2
-
-            if(x2 != x1){
-                xp1 = left+(x1*stepX)+Math.trunc(stepX/3);
-                xp2 = left+(x2*stepX)+Math.trunc(stepX/3)*2;
-            } else {
-                xp1 = left+(x1*stepX)+Math.trunc(stepX/2);
-                xp2 = left+(x2*stepX)+Math.trunc(stepX/2);
-            }
-            if(y2 != y1){
-                yp1 = top+(y1*stepY)+Math.trunc(stepY/3);
-                yp2 = top+(y2*stepY)+Math.trunc(stepY/3)*2;
-            } else {
-                yp1 = top+(y1*stepY)+Math.trunc(stepY/2);
-                yp2 = top+(y2*stepY)+Math.trunc(stepY/2);
-            }
-            if((x2 < x1) && (y2 > y1)){                     // Для случая косой черты справа налево
-                xp1 = left+(x1*stepX)+Math.trunc(stepX/3)*2;
-                xp2 = left+(x2*stepX)+Math.trunc(stepX/3);
-                yp1 = top+(y1*stepY)+Math.trunc(stepY/3);
-                yp2 = top+(y2*stepY)+Math.trunc(stepY/3)*3;
-            }
-
-//log.error("zzzzzzzzzzz: "+xp1+", "+yp1+", "+xp2+", "+yp2);
-
-            let line = new Path2D();
-
-            if((x2 < x1) && (y2 > y1)){
-                line.moveTo(xp1, yp1);
-                line.lineTo(xp1+lineThickness, yp1-lineThickness);
-                line.lineTo(xp2+lineThickness, yp2-lineThickness);
-                line.lineTo(xp2, yp2);
-                line.lineTo(xp1, yp1);
-            }else{
-                line.moveTo(xp1, yp1);
-                line.lineTo(xp1+lineThickness, yp1-lineThickness);
-                line.lineTo(xp2+lineThickness, yp2-lineThickness);
-                line.lineTo(xp2, yp2);
-                line.lineTo(xp1, yp1);
-            }
-
-            ctx.fillStyle = "Red";
-            ctx.lineWidth = 1;
-            ctx.fill(line);
-//            ctx.stroke(line);
+//            let x1 = 3;
+//            let y1 = 0;
+//            let x2 = 0;
+//            let y2 = 3;
+//            let xp1;
+//            let yp1;
+//            let xp2;
+//            let yp2
+//
+//            if(x2 != x1){
+//                xp1 = left+(x1*stepX)+Math.trunc(stepX/3);
+//                xp2 = left+(x2*stepX)+Math.trunc(stepX/3)*2;
+//            } else {
+//                xp1 = left+(x1*stepX)+Math.trunc(stepX/2);
+//                xp2 = left+(x2*stepX)+Math.trunc(stepX/2);
+//            }
+//            if(y2 != y1){
+//                yp1 = top+(y1*stepY)+Math.trunc(stepY/3);
+//                yp2 = top+(y2*stepY)+Math.trunc(stepY/3)*2;
+//            } else {
+//                yp1 = top+(y1*stepY)+Math.trunc(stepY/2);
+//                yp2 = top+(y2*stepY)+Math.trunc(stepY/2);
+//            }
+//            if((x2 < x1) && (y2 > y1)){                     // Для случая косой черты справа налево
+//                xp1 = left+(x1*stepX)+Math.trunc(stepX/3)*2;
+//                xp2 = left+(x2*stepX)+Math.trunc(stepX/3);
+//                yp1 = top+(y1*stepY)+Math.trunc(stepY/3);
+//                yp2 = top+(y2*stepY)+Math.trunc(stepY/3)*2;
+//            }
+//
+//            let line = new Path2D();
+//
+//            if((x2 < x1) && (y2 > y1)){
+//                line.moveTo(xp1, yp1);
+//                line.lineTo(xp1+lineThickness, yp1+lineThickness);
+//                line.lineTo(xp2+lineThickness, yp2+lineThickness);
+//                line.lineTo(xp2, yp2);
+//                line.lineTo(xp1, yp1);
+//            }else{
+//                line.moveTo(xp1, yp1);
+//                line.lineTo(xp1+lineThickness, yp1-lineThickness);
+//                line.lineTo(xp2+lineThickness, yp2-lineThickness);
+//                line.lineTo(xp2, yp2);
+//                line.lineTo(xp1, yp1);
+//            }
+//
+//            ctx.fillStyle = "Red";
+//            ctx.lineWidth = 1;
+//            ctx.fill(line);
 
             if(winLine !== null){                           // Если задана линия победы - проводим
-                ctx.fillStyle = "Red";                                                    // Задаём цвет заливки
-                ctx.lineWidth = lineThickness;                                            // Используем линию в любую тощину т.к. здесь пох...
-            ctx.fillStyle = "Black";                                                    // Задаём цвет заливки
-            ctx.lineWidth = 1;                                                          // Не используем линии толще единицы
-
                 let x1 = winLine[0][0];
                 let y1 = winLine[0][1];
                 let x2 = winLine[winLine.length-1][0];
                 let y2 = winLine[winLine.length-1][1];
+                let xp1;
+                let yp1;
+                let xp2;
+                let yp2
+
+                if(x2 != x1){
+                    xp1 = left+(x1*stepX)+Math.trunc(stepX/3);
+                    xp2 = left+(x2*stepX)+Math.trunc(stepX/3)*2;
+                } else {
+                    xp1 = left+(x1*stepX)+Math.trunc(stepX/2);
+                    xp2 = left+(x2*stepX)+Math.trunc(stepX/2);
+                }
+                if(y2 != y1){
+                    yp1 = top+(y1*stepY)+Math.trunc(stepY/3);
+                    yp2 = top+(y2*stepY)+Math.trunc(stepY/3)*2;
+                } else {
+                    yp1 = top+(y1*stepY)+Math.trunc(stepY/2);
+                    yp2 = top+(y2*stepY)+Math.trunc(stepY/2);
+                }
+                if((x2 < x1) && (y2 > y1)){                     // Для случая косой черты справа налево
+                    xp1 = left+(x1*stepX)+Math.trunc(stepX/3)*2;
+                    xp2 = left+(x2*stepX)+Math.trunc(stepX/3);
+                    yp1 = top+(y1*stepY)+Math.trunc(stepY/3);
+                    yp2 = top+(y2*stepY)+Math.trunc(stepY/3)*2;
+                }
 
                 let line = new Path2D();
-                line.moveTo(10,10);
-                line.lineTo(10, 200);
-                ctx.stroke(line);
-//                line.moveTo(left+(x1*stepX), top+(y1*stepY)+Math.trunc(stepY/2));
-//                line.lineTo(left+(x2*stepX), top+(y2*stepY)+Math.trunc(stepY/2));
-//                ctx.beginPath();
-//                ctx.moveTo(left+(x1*stepX), top+(y1*stepY)+Math.trunc(stepY/2));
-//                ctx.lineTo(left+(x2*stepX), top+(y2*stepY)+Math.trunc(stepY/2));
-//                ctx.fill();
+
+                if((x2 < x1) && (y2 > y1)){
+                    line.moveTo(xp1, yp1);
+                    line.lineTo(xp1+lineThickness, yp1+lineThickness);
+                    line.lineTo(xp2+lineThickness, yp2+lineThickness);
+                    line.lineTo(xp2, yp2);
+                    line.lineTo(xp1, yp1);
+                }else{
+                    line.moveTo(xp1, yp1);
+                    line.lineTo(xp1+lineThickness, yp1-lineThickness);
+                    line.lineTo(xp2+lineThickness, yp2-lineThickness);
+                    line.lineTo(xp2, yp2);
+                    line.lineTo(xp1, yp1);
+                }
+
+                ctx.fillStyle = "Red";
+                ctx.lineWidth = 1;
+                ctx.fill(line);
 
                 log.debug("Point 0", winLine[0]);
                 log.debug("Point last", winLine[winLine.length-1]);

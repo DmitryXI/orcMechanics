@@ -8,10 +8,14 @@
     function TicTacToe_awaiting_main(){                                                     // Входная функция модуля
         log.func.debug6("TicTacToe_awaiting_main");
 
+        // Сбрасываем значение переменных уровня модуля в дефолт на случай ожидания новой игры
+        w().user.onGameMessage = TicTacToe_awaiting_onGameMessage;      // Вешаем обработчик входящих сообщений от игры
+
+        delHTMLForm("TicTacToe_entrance");                                              // Полностью удаляем форму входа в игру
+        d("body").innerHTML = "";                                                       // Для порядка обнуляем содержимое body
+
         if(f(mainFormId) === null){                                                         // Навешиваем обработчики и пр. только если форма ещё не загружена и не обработана
             mainForm = addHTMLForm("TicTacToe/html/awaiting", mainFormId, [80, 80]);
-            delHTMLForm("TicTacToe_entrance");                                              // Полностью удаляем форму входа в игру
-            d("body").innerHTML = "";                                                       // Для порядка обнуляем содержимое body
 
             mainForm.getHTMLElement("back").addEventListener('click', () => {               // Устанавливаем обработчик на конпку "Назад"
                 sendMsg("core", "leaveGame", {                                              // Отправляем сообщение серверу о выходе из игры
@@ -50,7 +54,7 @@
                 parent.appendChild(getFormElement(mainFormId));
             }
         }else{
-            log.error("TicTacToe_awaiting_showForm: entrance form not found");
+            log.error("TicTacToe_awaiting_showForm: awaiting form not found");
         }
     }
 
