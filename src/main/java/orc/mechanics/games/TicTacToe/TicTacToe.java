@@ -626,11 +626,44 @@ public class TicTacToe extends AbstractVerticle {
                     }
 
                     // Проверяем на необходимость ходить ИИ (и выполняем ход(ы))
+                    Integer lastTurnOf = gameSessions.getInteger(gsid, "turnOf");
                     while ((point = game.makeAutoTurn(gsid, gameSessions)) != null){
-                        // Проверяем победу
-                        // Проверяем заполнение поля
+                        player = gameSessions.getPlayers(gsid).get(lastTurnOf);
+
                         // Добавляем point в newPoints
                         newPoints.add(point);
+
+                        // Проверяем на условия победы
+                        gmFin = game.checkGameWin(Integer.valueOf((String) player.get("number")), gsid, gameSessions);
+                        if (gmFin.finished) {
+                            log.debug("Game "+gsid+" finished with player "+(String) player.get("number")+" win!");
+                            gameSessions.setValue(gsid, "turnOf", -1);                                           // На всякий случай выставляем принадлежность хода несуществующему игроку
+
+                            sendMsgGameToPlayers(gameSessions.getPlayers(gsid), gsid,"gameFinished", new JSONObject()
+                                    .put("winner", Integer.valueOf(gmFin.winnerNumber))
+                                    .put("winLine", gmFin.winLine)
+                                    .put("newPoints", newPoints)
+                            );
+
+                            removeGameSession(gsid, "Game finished");
+                            return;
+                        }
+
+                        // Проверяем на заполнение поля и, если есть, рассылаем уведомление о завершении игры и удаляем сессию
+                        if (game.checkGameDraw(gsid, gameSessions)) {
+                            log.debug("Game "+gsid+" finished with draw");
+                            gameSessions.setValue(gsid, "turnOf", -1);                                           // На всякий случай выставляем принадлежность хода несуществующему игроку
+
+                            sendMsgGameToPlayers(gameSessions.getPlayers(gsid), gsid,"gameFinished", new JSONObject()
+                                    .put("winner", "none")
+                                    .put("newPoints", newPoints)
+                            );
+
+                            removeGameSession(gsid, "Game finished");
+                            return;
+                        }
+
+                        lastTurnOf = gameSessions.getInteger(gsid, "turnOf");
                     }
 
 

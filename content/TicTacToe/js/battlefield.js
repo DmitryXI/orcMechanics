@@ -287,10 +287,9 @@
                 ctx.fillStyle = "Red";
                 ctx.lineWidth = 1;
                 ctx.fill(line);
-
-                log.debug("Point 0", winLine[0]);
-                log.debug("Point last", winLine[winLine.length-1]);
-                log.debug("Draw line: "+(left+(x1*stepX))+","+(top+(y1*stepY)+Math.trunc(stepY/2))+" - "+(left+(x2*stepX))+","+(top+(y2*stepY)+Math.trunc(stepY/2)))
+//                log.debug("Point 0", winLine[0]);
+//                log.debug("Point last", winLine[winLine.length-1]);
+//                log.debug("Draw line: "+(left+(x1*stepX))+","+(top+(y1*stepY)+Math.trunc(stepY/2))+" - "+(left+(x2*stepX))+","+(top+(y2*stepY)+Math.trunc(stepY/2)))
             }
         }else{
             log.error("Can't get canvas content");
